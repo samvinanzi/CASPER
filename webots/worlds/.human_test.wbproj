@@ -6,11 +6,11 @@ maximizedDockId: -1
 centralWidgetVisible: 1
 projectionMode: PERSPECTIVE
 orthographicViewHeight: 3.34974
-textFiles: 0 "protos/HumanAgent.proto"
+textFiles: 1 "protos/HumanAgent.proto" "C:/Users/samue/AppData/Local/Programs/Webots/projects/robots/boston_dynamics/atlas/controllers/hello_world_demo/hello_world_demo.c"
 globalOptionalRendering: CoordinateSystem
 renderingDevicePerspectives: Peppe:camera;0;0.09125;0;0
 renderingDevicePerspectives: Peppe:range-finder;0;0.09125;0;0
-renderingDevicePerspectives: human(1):camera;0;0.72625;0;0
-renderingDevicePerspectives: human(1):range-finder;0;0.72625;0;0
-renderingDevicePerspectives: human:camera;0;0.72625;0;0
-renderingDevicePerspectives: human:range-finder;0;0.72625;0;0
+renderingDevicePerspectives: human(1):camera;0;0.31875;0;0
+renderingDevicePerspectives: human(1):range-finder;0;0.31875;0;0
+renderingDevicePerspectives: human:camera;0;0.31875;0;0
+renderingDevicePerspectives: human:range-finder;0;0.31875;0;0

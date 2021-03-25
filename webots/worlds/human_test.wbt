@@ -15,8 +15,8 @@ WorldInfo {
   ]
 }
 Viewpoint {
-  orientation 0.13066585090110888 0.9820549909583449 0.1359942283411111 4.9081604528305185
-  position -5.007246091797559 2.0110680248113835 3.6834898790933126
+  orientation -0.9975061125346067 0.059239623620578566 -0.03836955107097731 0.569829093686151
+  position -2.072838004253064 5.727938896561211 10.150392056682097
   near 1
 }
 TexturedBackground {
@@ -591,8 +591,11 @@ HumanAgent {
   translation 0 1.27 1.42
 }
 Robot {
-  translation 0 1.27 -1.1
+  translation 0 1.27 -8.29
   children [
+    DifferentialWheels {
+      translation 0 -1.27 0
+    }
     GPS {
     }
     RangeFinder {
@@ -1003,4 +1006,8 @@ Robot {
   ]
   controller ""
   supervisor TRUE
+}
+StopSign {
+  translation -3 0 -5
+  rotation 0 1 0 1.5708
 }

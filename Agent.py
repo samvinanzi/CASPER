@@ -3,10 +3,9 @@ Generic Agent controller.
 Groups common methods between Humans and Robots.
 """
 
-from controller import Robot, Supervisor, Camera, RangeFinder, CameraRecognitionObject, GPS
+from controller import Robot, Supervisor, Camera, RangeFinder, CameraRecognitionObject, GPS, DifferentialWheels
 import numpy as np
 import cv2
-
 
 class Agent:
     def __init__(self, supervisor=False):
@@ -110,9 +109,9 @@ class Agent:
         :param world_coordinates: 3d world coordinates (x, y, z)
         :return: 2d world coordinates (x, z)
         """
-        return (world_coordinates[0], world_coordinates[2])
+        return (round(world_coordinates[0], 2), round(world_coordinates[2], 2))
 
-    def get_2d_position(self):
+    def get_gps_position(self):
         """
         Sugar code to fetch GPS coordinates and convert them to a 2D position on the XZ plane.
 

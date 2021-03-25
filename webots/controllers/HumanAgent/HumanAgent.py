@@ -4,9 +4,9 @@ Derives from Agent.
 """
 
 from Agent import Agent
-from controller import Node, Field, TouchSensor
+from controller import Node, Field
 import math
-from controller import CameraRecognitionObject
+import numpy as np
 
 
 class HumanAgent(Agent):
@@ -16,12 +16,12 @@ class HumanAgent(Agent):
         self.all_nodes = self.obtain_all_nodes()
         self.object_in_hand = None
 
+        # Walking parameters
         self.BODY_PARTS_NUMBER = 13
         self.WALK_SEQUENCES_NUMBER = 8
         self.ROOT_HEIGHT = 1.27
         self.CYCLE_TO_DISTANCE_RATIO = 0.22
         self.speed = 1.15
-        self.current_height_offset = 0
         self.joints_position_field = []
         self.joint_names = [
             "leftArmAngle", "leftLowerArmAngle", "leftHandAngle",
@@ -84,7 +84,57 @@ class HumanAgent(Agent):
             self.step()
             break
 
+    def walk_simplified(self, target, speed=None, debug=False):
+        """
+        Walks to a specific coordinate, without any animation.
+
+        :param target: coordinate in the format (x, z)
+        :param speed: walking speed in [m/s]
+        :param debug: activate/deactivate debug output
+        :return: None
+        """
+        if speed is None:
+            speed = self.speed
+        # Calculates the waypoints (including the starting position)
+        start = self.get_robot_position()
+        end = target
+        if debug:
+            print("I am about to walk from {0} to {1}".format(start, end))
+        # Retrieve the required nodes and fields
+        root_node_ref = self.supervisor.getSelf()  # root_node_ref is the Robot node where the Supervisor is running
+        root_translation_field = root_node_ref.getField("translation")
+        root_rotation_field = root_node_ref.getField("rotation")
+
+        # Rotate
+        dx = end[0] - start[0]
+        dy = end[1] - start[1]
+        angle = math.atan2(dx, dy)
+        if debug:
+            print("Angle: {0} rad ({1}°)".format(angle, math.degrees(angle)))
+            print("Distance: {0}".format(math.dist(start, end)))
+        root_rotation_field.setSFRotation([0, 1, 0, angle])
+
+        # Move
+        s = np.array(start)
+        e = np.array(end)
+        f = lambda t: s + t * (e - s)   # Line segment
+
+        delta = 0.01 * speed
+        i = 0
+        while self.step():
+            # Varying the parameter between 0 and 1 on the line segment equation gives the intermediate coordinates
+            i += delta
+            waypoint = f(i)
+            root_translation_field.setSFVec3f([waypoint[0], self.ROOT_HEIGHT, waypoint[1]])
+            # If an object is held, it has to move together with the agent
+            #self.move_object_in_hand()
+            if i >= 1:
+                if debug:
+                    print("I have stopped in position: {0}".format(waypoint))
+                return
+
     def walk(self, trajectory, speed=None, debug=False):
+        # todo not currently working
         """
         Executes a walking animation to a specified target coordinate.
 
@@ -136,9 +186,8 @@ class HumanAgent(Agent):
                 self.joints_position_field[i].setSFFloat(current_angle)
 
             # adjust height
-            self.current_height_offset = self.height_offsets[current_sequence] * (1 - ratio) + \
-                                         self.height_offsets[
-                                             (current_sequence + 1) % self.WALK_SEQUENCES_NUMBER] * ratio
+            current_height_offset = self.height_offsets[current_sequence] * (1 - ratio) + \
+                                    self.height_offsets[(current_sequence + 1) % self.WALK_SEQUENCES_NUMBER] * ratio
 
             # move everything forward
             distance = time * speed
@@ -155,21 +204,19 @@ class HumanAgent(Agent):
             else:
                 distance_ratio = (relative_distance - waypoints_distance[i - 1]) / \
                                  (waypoints_distance[i] - waypoints_distance[i - 1])
-            x = distance_ratio * waypoints[(i + 1) % number_of_waypoints][0] + \
-                (1 - distance_ratio) * waypoints[i][0]
-            z = distance_ratio * waypoints[(i + 1) % number_of_waypoints][1] + \
-                (1 - distance_ratio) * waypoints[i][1]
-            root_translation = [x, self.ROOT_HEIGHT + self.current_height_offset, z]
+            x = distance_ratio * waypoints[(i + 1) % number_of_waypoints][0] + (1 - distance_ratio) * waypoints[i][0]
+            z = distance_ratio * waypoints[(i + 1) % number_of_waypoints][1] + (1 - distance_ratio) * waypoints[i][1]
+
+            root_translation = [x, self.ROOT_HEIGHT + current_height_offset, z]
             angle = math.atan2(waypoints[(i + 1) % number_of_waypoints][0] - waypoints[i][0],
                                waypoints[(i + 1) % number_of_waypoints][1] - waypoints[i][1])
             rotation = [0, 1, 0, angle]
-
             root_translation_field.setSFVec3f(root_translation)
             root_rotation_field.setSFRotation(rotation)
             self.move_object_in_hand()
 
             # Check if destination is reached
-            agent_position = human.get_2d_position()
+            agent_position = human.get_gps_position()
             dist = math.hypot(agent_position[0] - final_waypoint[0], agent_position[1] - final_waypoint[1])
             if debug:
                 print("Current position: " + str(agent_position))
@@ -185,7 +232,8 @@ class HumanAgent(Agent):
                 for i in range(0, self.BODY_PARTS_NUMBER):
                     self.joints_position_field[i].setSFFloat(0.0)
                 # Compute an additional step to ensure that the position is reached
-                self.step()
+                #self.step()
+                print("I have stopped at: " + str(self.get_robot_position()))
                 return
 
     def approach_target(self, target_name, debug=False):
@@ -201,13 +249,7 @@ class HumanAgent(Agent):
         if target is not None:
             # If identified, gets its world position
             target_position = self.convert_to_2d_coords(target.getPosition())
-            # my_position = self.get_2d_position()
-            # Moves from the current location to the target position
-            # if debug:
-            #    print("Issued walk command from " + str(my_position) + " to " + str(target_position))
-            # self.walk([my_position, target_position], debug=False)
-            self.walk([target_position], debug=False)
-            print("I have stopped at {0}".format(self.get_robot_position()))
+            self.walk_simplified(target_position, debug)
             return True
         return False
 
@@ -320,8 +362,20 @@ class HumanAgent(Agent):
 human = HumanAgent()
 
 while human.step():
-    human.approach_target("coca-cola", True)
-    #human.hand_forward()
-    human.grasp_object("coca-cola")
-    human.approach_target("Peppe", True)
+    #human.approach_target("coca-cola", True)
+    #human.grasp_object("coca-cola")
+    while True:
+        human.approach_target("coca-cola", True)
+        human.approach_target("Peppe", True)
+
+    #human.walk_simplified((-3, -5), speed=1, debug=True)
+    #while True:
+    #    human.walk([(0, -5)], debug=False)
+    #    human.walk([(0, 1.42)], debug=False)
+    #human.approach_target("coca-cola", True)
+    #human.approach_target("Peppe", True)
+    #human.approach_target("coca-cola", True)
+    #human.approach_target("Peppe", True)
+    #human.approach_target("coca-cola", True)
+    #human.approach_target("Peppe", True)
     break
