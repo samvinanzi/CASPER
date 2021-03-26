@@ -3,7 +3,7 @@ Generic Agent controller.
 Groups common methods between Humans and Robots.
 """
 
-from controller import Robot, Supervisor, Camera, RangeFinder, CameraRecognitionObject, GPS, DifferentialWheels
+from controller import Robot, Supervisor, Camera, RangeFinder, CameraRecognitionObject, GPS, TouchSensor
 import numpy as np
 import cv2
 
@@ -26,6 +26,7 @@ class Agent:
         self.camera = Camera("camera")
         self.rangefinder = RangeFinder("range-finder")
         self.gps = GPS("gps")
+        self.bumper = TouchSensor("touch sensor")
 
         # Enable devices
         self.camera.enable(self.timestep)
@@ -33,6 +34,7 @@ class Agent:
         #self.camera.enableRecognitionSegmentation()
         self.rangefinder.enable(self.timestep)
         self.gps.enable(self.timestep)
+        self.bumper.enable(self.timestep)
 
     def is_camera_active(self):
         """
@@ -119,6 +121,14 @@ class Agent:
         """
         world_position = self.gps.getValues()
         return self.convert_to_2d_coords(world_position)
+
+    def is_bumper_pressed(self):
+        """
+        Checks wherever the bumper has detected a force (collision) or not.
+
+        :return: True if a contact has happened, False otherwise
+        """
+        return bool(self.bumper.getValue())
 
     def show_camera_image(self, objectlist=None, segmented=False):
         """

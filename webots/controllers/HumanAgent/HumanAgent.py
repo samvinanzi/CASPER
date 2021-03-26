@@ -14,14 +14,14 @@ class HumanAgent(Agent):
         Agent.__init__(self, supervisor=True)
 
         self.all_nodes = self.obtain_all_nodes()
-        self.object_in_hand = None
+        self.object_in_hand: Node = None
 
         # Walking parameters
         self.BODY_PARTS_NUMBER = 13
         self.WALK_SEQUENCES_NUMBER = 8
         self.ROOT_HEIGHT = 1.27
         self.CYCLE_TO_DISTANCE_RATIO = 0.22
-        self.speed = 1.15
+        self.speed = .5
         self.joints_position_field = []
         self.joint_names = [
             "leftArmAngle", "leftLowerArmAngle", "leftHandAngle",
@@ -67,23 +67,6 @@ class HumanAgent(Agent):
         """
         return self.convert_to_2d_coords(self.supervisor.getSelf().getPosition())
 
-    def hand_forward(self):
-        """
-        Adopts a position where the hand is leaning frontally.
-
-        :return: None
-        """
-        # Target angles, defined empirically
-        upper_arm_target = -0.485398
-        lower_arm_target = -0.3
-        upper_arm_index = self.joint_names.index("rightArmAngle")
-        lower_arm_index = self.joint_names.index("rightLowerArmAngle")
-        while self.step():
-            self.joints_position_field[upper_arm_index].setSFFloat(upper_arm_target)
-            self.joints_position_field[lower_arm_index].setSFFloat(lower_arm_target)
-            self.step()
-            break
-
     def walk_simplified(self, target, speed=None, debug=False):
         """
         Walks to a specific coordinate, without any animation.
@@ -117,18 +100,25 @@ class HumanAgent(Agent):
         # Move
         s = np.array(start)
         e = np.array(end)
-        f = lambda t: s + t * (e - s)   # Line segment
+        # Line segment: f(0) = start, f(1) = end
+        f = lambda t: s + t * (e - s)
 
-        delta = 0.01 * speed
+        delta = 0.01 * speed    # When speed = 1, it ensures a movement of 1 m/s
         i = 0
         while self.step():
-            # Varying the parameter between 0 and 1 on the line segment equation gives the intermediate coordinates
-            i += delta
-            waypoint = f(i)
+            collision = self.is_bumper_pressed()
+            if not collision:
+                # Steps forward and memorizes the new position
+                i += delta
+                waypoint = f(i)
+            else:
+                # Step backwards to avoid occupying the intersecting space (which will result in further detections)
+                waypoint = f(i-delta)
             root_translation_field.setSFVec3f([waypoint[0], self.ROOT_HEIGHT, waypoint[1]])
             # If an object is held, it has to move together with the agent
-            #self.move_object_in_hand()
-            if i >= 1:
+            self.move_object_in_hand()
+            # Stop if the walk is complete or if an obstacle was hit
+            if i >= 1 or collision:
                 if debug:
                     print("I have stopped in position: {0}".format(waypoint))
                 return
@@ -236,6 +226,17 @@ class HumanAgent(Agent):
                 print("I have stopped at: " + str(self.get_robot_position()))
                 return
 
+    def neutral_position(self):
+        """
+        Positions the human agent in a neutral position.
+
+        :return: None
+        """
+        while self.step():
+            for i in range(0, self.BODY_PARTS_NUMBER):
+                self.joints_position_field[i].setSFFloat(0.0)
+            break
+
     def approach_target(self, target_name, debug=False):
         """
         Supervisor-version of search-and-approach: uses global knowledge of the world to identify the target coordinates
@@ -249,9 +250,43 @@ class HumanAgent(Agent):
         if target is not None:
             # If identified, gets its world position
             target_position = self.convert_to_2d_coords(target.getPosition())
-            self.walk_simplified(target_position, debug)
+            self.walk_simplified(target_position, debug=debug)
             return True
         return False
+
+    def hand_forward(self, steps=5):
+        """
+        Adopts a position where the hand is leaning frontally. Animated.
+
+        :param steps: int, desired number of animation waypoints
+        :return: None
+        """
+        assert isinstance(steps, int) and steps >= 1, "Steps must be an integer not lower than 1."
+        # Start positions
+        upper_start = 0
+        lower_start = 0
+        # Target angles, defined empirically
+        upper_target = -0.485398
+        lower_target = -0.3
+        # Increments per step
+        upper_step = (upper_target - upper_start) / steps
+        lower_step = (lower_target - lower_start) / steps
+        # Indexes in the joint field list
+        upper_arm_index = self.joint_names.index("rightArmAngle")
+        lower_arm_index = self.joint_names.index("rightLowerArmAngle")
+        # Incremental positions
+        upper_angle = upper_start
+        lower_angle = lower_start
+        while self.step():
+            if math.fabs(upper_target - upper_angle) > 0 and math.fabs(lower_target - lower_angle) > 0:
+                self.joints_position_field[upper_arm_index].setSFFloat(upper_angle)
+                self.joints_position_field[lower_arm_index].setSFFloat(lower_angle)
+                upper_angle += upper_step
+                lower_angle += lower_step
+            else:
+                break
+            #self.step()
+            #break
 
     def grasp_object(self, target_name : str):
         """
@@ -270,12 +305,33 @@ class HumanAgent(Agent):
             return True
         return False
 
-    def release_object(self):
+    def release_object(self, destination):
+        """
+        Releases the hand-held object on a target destination (must be a surface)
+        :param destination: str, name of the desired surface node
+        :return: True if successful, False otherwise
+        """
+        assert isinstance(destination, str), "Must specify a string name to search for"
         if self.object_in_hand is not None:
-            self.hand_forward()
-            self.object_in_hand = None
-            # todo => position the object on the surface?
-            return True
+            target: Node = self.all_nodes.get(destination)
+            if target is not None:
+                # Verifies that the destination is an acceptable surface
+                accepted_types = ["Table"]
+                if target.getTypeName() not in accepted_types:
+                    print("Destination must be one of: {0}".format(accepted_types))
+                else:
+                    # The destination must have X and Z coordinates of the surface, Y equal to the table height
+                    table_trans = target.getField("translation").getSFVec3f()
+                    # Get the height of the table (Y)
+                    table_size = target.getField("size").getSFVec3f()
+                    table_height = table_size[1]
+                    # Calculate the new position and assign it
+                    final_position = [table_trans[0], table_height, table_trans[2]]
+                    self.object_in_hand.getField("translation").setSFVec3f(final_position)
+                    # Free the hand and reset the stance
+                    self.object_in_hand = None
+                    self.neutral_position()
+                    return True
         return False
 
     def move_object_in_hand(self):
@@ -285,7 +341,12 @@ class HumanAgent(Agent):
         :return: None
         """
         if self.object_in_hand is not None:
+            # Resets the object inertia, preventing it from being subject to gravitational effects
+            self.object_in_hand.resetPhysics()
             hand_translation, hand_rotation = self.get_hand_transform()
+            object_rotation = self.object_in_hand.getField("rotation").getSFRotation()
+            # Maintain the object's angle
+            hand_rotation[-1] = object_rotation[-1]
             self.object_in_hand.getField("translation").setSFVec3f(hand_translation)
             self.object_in_hand.getField("rotation").setSFRotation(hand_rotation)
 
@@ -320,7 +381,6 @@ class HumanAgent(Agent):
         hj2 = lower_arm_children.getMFNode(lower_arm_children.getCount() - 1)
         hand_endpoint: Field = hj2.getField("endPoint")
         hand_endpoint_solid = hand_endpoint.getSFNode()
-        #hand_trans = hand_endpoint_solid.getField("translation").getSFVec3f()
         hand_children = hand_endpoint_solid.getField("children")
         # Hand_transform
         transform = hand_children.getMFNode(0)
@@ -328,11 +388,10 @@ class HumanAgent(Agent):
         hand_rot = transform.getField("rotation").getSFRotation()
 
         hand_position = transform.getPosition()
-        #print("POS: " + str(transform.getPosition()))
         # Calculates the translation from the hand to the world
-        translations = [robot_trans, upper_arm_trans, lower_arm_trans, hand_trans]
+        #translations = [robot_trans, upper_arm_trans, lower_arm_trans, hand_trans]
         rotations = [robot_rot, upper_arm_rot, lower_arm_rot, hand_rot] # disattivo?
-        t = [sum(x) for x in zip(*translations)]
+        #t = [sum(x) for x in zip(*translations)]
         r = [sum(x) for x in zip(*rotations)]
         #return t, r
         return hand_position, r
@@ -362,20 +421,12 @@ class HumanAgent(Agent):
 human = HumanAgent()
 
 while human.step():
-    #human.approach_target("coca-cola", True)
-    #human.grasp_object("coca-cola")
-    while True:
-        human.approach_target("coca-cola", True)
-        human.approach_target("Peppe", True)
-
-    #human.walk_simplified((-3, -5), speed=1, debug=True)
     #while True:
-    #    human.walk([(0, -5)], debug=False)
-    #    human.walk([(0, 1.42)], debug=False)
-    #human.approach_target("coca-cola", True)
-    #human.approach_target("Peppe", True)
-    #human.approach_target("coca-cola", True)
-    #human.approach_target("Peppe", True)
-    #human.approach_target("coca-cola", True)
-    #human.approach_target("Peppe", True)
+    #    human.hand_forward()
+    #    human.neutral_position()
+    human.approach_target("coca-cola", True)
+    human.grasp_object("coca-cola")
+    human.approach_target("destination-table", True)
+    human.release_object("destination-table")
+    human.walk_simplified((0, 1.42))
     break

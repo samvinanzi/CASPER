@@ -39,6 +39,17 @@ Robot {
   rotation IS rotation
   controller IS controller
   children [
+	TouchSensor {
+      translation 0 -0.31 0
+      boundingObject Shape {
+        geometry Capsule {
+          height 1.4
+          radius 0.25
+          subdivision 16
+        }
+        castShadows FALSE
+      }
+    }
 	GPS {
     }
 	RangeFinder {

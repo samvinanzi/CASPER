@@ -15,8 +15,8 @@ WorldInfo {
   ]
 }
 Viewpoint {
-  orientation -0.9975061125346067 0.059239623620578566 -0.03836955107097731 0.569829093686151
-  position -2.072838004253064 5.727938896561211 10.150392056682097
+  orientation -0.6246141655340273 -0.7273868901398611 -0.2841926393608611 1.001072995860114
+  position -4.329229869079996 6.160742982457776 7.342554989215425
   near 1
 }
 TexturedBackground {
@@ -41,25 +41,9 @@ Pedestrian {
   shirtColor 0 0 0
   pantsColor 0 0 0
 }
-Pedestrian {
-  translation 5 1.27 1
-  rotation 0 1 0 3.14159
-  name "pedestrian(1)"
-  controllerArgs [
-    "--trajectory=5 1, 5 -1, 1 -5, -1 -5, -5 -1, -5 1, -1 5, 1 5"
-  ]
-  shirtColor 0.466667 0.0980392 0.458824
-}
-Pedestrian {
-  translation 6 1.27 2
-  rotation 0 1 0 3.14159
-  name "pedestrian(2)"
-  shirtColor 0.6 0.4 0.35
-  pantsColor 0.18 0.18 0.23
-}
 DEF Peppe Robot {
   translation -6.26539 1.27 0.96493
-  rotation 0 1 0 3.14159
+  rotation 0 -1 0 -1.5707953071795862
   children [
     GPS {
     }
@@ -587,14 +571,19 @@ Can {
   translation -0.0399526 0.8 3.14601
   name "coca-cola"
 }
-HumanAgent {
-  translation 0 1.27 1.42
-}
 Robot {
-  translation 0 1.27 -8.29
+  translation 0.121425 1.27 -8.29644
   children [
-    DifferentialWheels {
-      translation 0 -1.27 0
+    TouchSensor {
+      translation 0 -0.31 0
+      boundingObject Shape {
+        geometry Capsule {
+          height 1.4
+          radius 0.25
+          subdivision 16
+        }
+        castShadows FALSE
+      }
     }
     GPS {
     }
@@ -1010,4 +999,11 @@ Robot {
 StopSign {
   translation -3 0 -5
   rotation 0 1 0 1.5708
+}
+Table {
+  name "destination-table"
+  size 0.7 0.8 0.7
+}
+HumanAgent {
+  translation 0 1.27 1.42
 }
