@@ -4,13 +4,15 @@ Derives from Agent.
 """
 
 from Agent import Agent
-from controller import Node, Field
+from controller import Node, Field, Mouse
 import math
 import numpy as np
+from path_planning.robot_astar import RoboAStar
+from maps.Kitchen import Kitchen
 
 
 class HumanAgent(Agent):
-    def __init__(self, ):
+    def __init__(self):
         Agent.__init__(self, supervisor=True)
 
         self.all_nodes = self.obtain_all_nodes()
@@ -66,6 +68,16 @@ class HumanAgent(Agent):
         :return: (x,z) position of the robot
         """
         return self.convert_to_2d_coords(self.supervisor.getSelf().getPosition())
+
+    def get_robot_orientation(self):
+        """
+        Using Supervisor functions, obtains the rotation matrix of the robot.
+
+        :return: 3x3 rotation matrix
+        """
+        orientation = np.array(self.supervisor.getSelf().getOrientation())
+        orientation.reshape(3, 3)
+        return orientation
 
     def walk_simplified(self, target, speed=None, debug=False):
         """
@@ -415,18 +427,72 @@ class HumanAgent(Agent):
                 all_nodes[name] = node
         return all_nodes
 
+    def path_planning(self, goal):
+        kitchen_map = Kitchen()
+        planner = RoboAStar(self.supervisor, kitchen_map)
+        start = self.get_robot_position()
+        plan = planner.astar(start, goal, reversePath=True)
+
+    """
+    def calculate_coordinate(self, direction, delta=0.4):
+        assert direction in ["N", "NE", "E", "SE", "S", "SW", "W", "NW"], "Invalid direction"
+        delta_diagonal = math.sqrt(2) / 2 * delta
+        x = 0
+        z = 0
+        if direction == "N":
+            z += delta
+        elif direction == "E":
+            x -= delta
+        elif direction == "S":
+            z -= delta
+        elif direction == "W":
+            x += delta
+        elif direction == "NE":
+            x -= delta_diagonal
+            z += delta_diagonal
+        elif direction == "SE":
+            x -= delta_diagonal
+            z -= delta_diagonal
+        elif direction == "SW":
+            x += delta_diagonal
+            z -= delta_diagonal
+        elif direction == "NW":
+            x += delta_diagonal
+            z += delta_diagonal
+        return np.array([x, 0, z], dtype=float)
+
+    def global_from_local(self, p_local):
+        #R = np.array(self.robot.getSupervisor().getOrientation())
+        R = np.array(self.supervisor.getSelf().getOrientation())
+        R = R.reshape(3, 3)
+        #T = np.array(self.robot.getSupervisor().getPosition())
+        T = np.array(self.supervisor.getSelf().getPosition())
+        p_global = np.dot(R, p_local) + T
+        return (p_global[0], p_global[2])
+        
+    """
+
 
 # MAIN LOOP
 
 human = HumanAgent()
 
 while human.step():
-    #while True:
-    #    human.hand_forward()
-    #    human.neutral_position()
+    '''
     human.approach_target("coca-cola", True)
     human.grasp_object("coca-cola")
     human.approach_target("destination-table", True)
     human.release_object("destination-table")
     human.walk_simplified((0, 1.42))
+    
+    #orientation = human.get_robot_orientation()
+    #print(orientation)
+    directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+    for direction in directions:
+        point_local = human.calculate_coordinate(direction)
+        point_global = human.global_from_local(point_local)
+        print("Direction: {0}\nLocal: {1}\nGlobal: {2}\n".format(direction, point_local, point_global))
+    '''
+
+    human.path_planning((2.6, 1.0))
     break

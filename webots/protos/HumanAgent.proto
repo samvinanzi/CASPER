@@ -39,6 +39,16 @@ Robot {
   rotation IS rotation
   controller IS controller
   children [
+	DistanceSensor {
+      translation 0 -0.35 0
+      rotation 0 1 0 -1.5707953071795862
+      lookupTable [
+        0 100 0
+        1 0 0
+      ]
+      numberOfRays 5
+      aperture 1.57
+    }
 	TouchSensor {
       translation 0 -0.31 0
       boundingObject Shape {

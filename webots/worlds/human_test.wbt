@@ -15,8 +15,8 @@ WorldInfo {
   ]
 }
 Viewpoint {
-  orientation -0.6246141655340273 -0.7273868901398611 -0.2841926393608611 1.001072995860114
-  position -4.329229869079996 6.160742982457776 7.342554989215425
+  orientation -0.9988910417480739 0.04686395218805301 0.004522908440782413 1.3023930183031949
+  position 1.0369911815650963 20.04477925256419 5.881957164116592
   near 1
 }
 TexturedBackground {
@@ -574,6 +574,16 @@ Can {
 Robot {
   translation 0.121425 1.27 -8.29644
   children [
+    DistanceSensor {
+      translation 0 -0.35 0
+      rotation 0 1 0 -1.5707953071795862
+      lookupTable [
+        0 100 0
+        1 0 0
+      ]
+      numberOfRays 5
+      aperture 1.57
+    }
     TouchSensor {
       translation 0 -0.31 0
       boundingObject Shape {
@@ -1005,5 +1015,5 @@ Table {
   size 0.7 0.8 0.7
 }
 HumanAgent {
-  translation 0 1.27 1.42
+  translation -0.0335896 1.27 -2.03532
 }

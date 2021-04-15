@@ -3,7 +3,7 @@ Generic Agent controller.
 Groups common methods between Humans and Robots.
 """
 
-from controller import Robot, Supervisor, Camera, RangeFinder, CameraRecognitionObject, GPS, TouchSensor
+from controller import Robot, Supervisor, Camera, RangeFinder, CameraRecognitionObject, GPS, TouchSensor, DistanceSensor
 import numpy as np
 import cv2
 
@@ -27,6 +27,7 @@ class Agent:
         self.rangefinder = RangeFinder("range-finder")
         self.gps = GPS("gps")
         self.bumper = TouchSensor("touch sensor")
+        self.distance_sensor = DistanceSensor("distance sensor")
 
         # Enable devices
         self.camera.enable(self.timestep)
@@ -35,6 +36,7 @@ class Agent:
         self.rangefinder.enable(self.timestep)
         self.gps.enable(self.timestep)
         self.bumper.enable(self.timestep)
+        self.distance_sensor.enable(self.timestep)
 
     def is_camera_active(self):
         """
