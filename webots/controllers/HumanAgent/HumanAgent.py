@@ -79,6 +79,25 @@ class HumanAgent(Agent):
         orientation.reshape(3, 3)
         return orientation
 
+    def turn_towards(self, target):
+        """
+        Rotates the robot, in place, towards the target.
+
+        :param target: coordinate in the format (x, z)
+        :return: None
+        """
+        start = self.get_robot_position()
+        end = target
+        root_node_ref = self.supervisor.getSelf()
+        root_rotation_field = root_node_ref.getField("rotation")
+        # Rotate
+        dx = end[0] - start[0]
+        dy = end[1] - start[1]
+        angle = math.atan2(dx, dy)
+        while self.step():
+            root_rotation_field.setSFRotation([0, 1, 0, angle])
+            break
+
     def walk_simplified(self, target, speed=None, debug=False):
         """
         Walks to a specific coordinate, without any animation.
@@ -249,7 +268,7 @@ class HumanAgent(Agent):
                 self.joints_position_field[i].setSFFloat(0.0)
             break
 
-    def approach_target(self, target_name, debug=False):
+    def approach_target(self, target_name, speed=None, debug=False):
         """
         Supervisor-version of search-and-approach: uses global knowledge of the world to identify the target coordinates
         without needing to visually identify the destination.
@@ -262,8 +281,13 @@ class HumanAgent(Agent):
         if target is not None:
             # If identified, gets its world position
             target_position = self.convert_to_2d_coords(target.getPosition())
-            self.walk_simplified(target_position, debug=debug)
-            return True
+            # Trace a path to the destination
+            path = self.path_planning(target_position)
+            if path is not None:
+                for waypoint in path:
+                    self.walk_simplified(waypoint, speed=speed, debug=debug)
+                self.turn_towards(target_position)
+                return True
         return False
 
     def hand_forward(self, steps=5):
@@ -427,72 +451,31 @@ class HumanAgent(Agent):
                 all_nodes[name] = node
         return all_nodes
 
-    def path_planning(self, goal):
-        kitchen_map = Kitchen()
+    def path_planning(self, goal, show=False):
+        kitchen_map = Kitchen()     # todo This has to go outside of the HumanAgent class, higher up
         planner = RoboAStar(self.supervisor, kitchen_map)
         start = self.get_robot_position()
-        plan = planner.astar(start, goal, reversePath=True)
-
-    """
-    def calculate_coordinate(self, direction, delta=0.4):
-        assert direction in ["N", "NE", "E", "SE", "S", "SW", "W", "NW"], "Invalid direction"
-        delta_diagonal = math.sqrt(2) / 2 * delta
-        x = 0
-        z = 0
-        if direction == "N":
-            z += delta
-        elif direction == "E":
-            x -= delta
-        elif direction == "S":
-            z -= delta
-        elif direction == "W":
-            x += delta
-        elif direction == "NE":
-            x -= delta_diagonal
-            z += delta_diagonal
-        elif direction == "SE":
-            x -= delta_diagonal
-            z -= delta_diagonal
-        elif direction == "SW":
-            x += delta_diagonal
-            z -= delta_diagonal
-        elif direction == "NW":
-            x += delta_diagonal
-            z += delta_diagonal
-        return np.array([x, 0, z], dtype=float)
-
-    def global_from_local(self, p_local):
-        #R = np.array(self.robot.getSupervisor().getOrientation())
-        R = np.array(self.supervisor.getSelf().getOrientation())
-        R = R.reshape(3, 3)
-        #T = np.array(self.robot.getSupervisor().getPosition())
-        T = np.array(self.supervisor.getSelf().getPosition())
-        p_global = np.dot(R, p_local) + T
-        return (p_global[0], p_global[2])
-        
-    """
+        print("Searching...")
+        path = planner.astar(start, goal, reversePath=False)
+        print("Path: {0}".format(path))
+        if path is None:
+            print("Unable to compute a path from {0} to {1}.".format(start, goal))
+        elif show:
+            for waypoint in path:
+                kitchen_map.add_point_to_plot(waypoint)
+            kitchen_map.visualize()
+        return path
 
 
 # MAIN LOOP
 
 human = HumanAgent()
+speed = 2
 
 while human.step():
-    '''
-    human.approach_target("coca-cola", True)
-    human.grasp_object("coca-cola")
-    human.approach_target("destination-table", True)
-    human.release_object("destination-table")
-    human.walk_simplified((0, 1.42))
-    
-    #orientation = human.get_robot_orientation()
-    #print(orientation)
-    directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
-    for direction in directions:
-        point_local = human.calculate_coordinate(direction)
-        point_global = human.global_from_local(point_local)
-        print("Direction: {0}\nLocal: {1}\nGlobal: {2}\n".format(direction, point_local, point_global))
-    '''
-
-    human.path_planning((2.6, 1.0))
+    if human.approach_target("coca-cola", speed):
+        human.grasp_object("coca-cola")
+        if human.approach_target("table(1)", speed):
+            human.release_object("destination-table")
+            human.walk_simplified((0, 0), speed)
     break

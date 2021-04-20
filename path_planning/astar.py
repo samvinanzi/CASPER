@@ -76,6 +76,9 @@ class AStar:
             return reversed(list(_gen()))
 
     def astar(self, start, goal, reversePath=False):
+        start = tuple(round(i, 2) for i in start)
+        goal = tuple(round(i, 2) for i in goal)
+        self.add_text(goal, style="r*", text="GOAL")
         if self.is_goal_reached(start, goal):
             return [start]
         searchNodes = AStar.SearchNodeDict()
@@ -110,6 +113,10 @@ class AStar:
                     heappush(openSet, neighbor)
         print("Goal not found")
         return None
+
+    @abstractmethod
+    def add_text(self, point, style, text):
+        pass
 
 
 def find_path(start, goal, neighbors_fnct, reversePath=False, heuristic_cost_estimate_fnct=lambda a, b: Infinite, distance_between_fnct=lambda a, b: 1.0, is_goal_reached_fnct=lambda a, b: a == b):
