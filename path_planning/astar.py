@@ -89,7 +89,7 @@ class AStar:
         while openSet:
             current = heappop(openSet)
             if self.is_goal_reached(current.data, goal):
-                print("Goal found!")
+                print("[PATH-PLANNING] Goal found!")
                 return self.reconstruct_path(current, reversePath)
             current.out_openset = True
             current.closed = True
@@ -111,11 +111,11 @@ class AStar:
                     # re-add the node in order to re-sort the heap
                     openSet.remove(neighbor)
                     heappush(openSet, neighbor)
-        print("Goal not found")
+        print("[PATH-PLANNING] Goal not found")
         return None
 
     @abstractmethod
-    def add_text(self, point, style, text):
+    def add_text(self, point, style="k.", text=None):
         pass
 
 

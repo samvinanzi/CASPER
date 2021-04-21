@@ -12,8 +12,8 @@ from maps.Kitchen import Kitchen
 
 
 class HumanAgent(Agent):
-    def __init__(self):
-        Agent.__init__(self, supervisor=True)
+    def __init__(self, debug=False):
+        Agent.__init__(self, supervisor=True, debug=debug)
 
         self.all_nodes = self.obtain_all_nodes()
         self.object_in_hand: Node = None
@@ -98,12 +98,13 @@ class HumanAgent(Agent):
             root_rotation_field.setSFRotation([0, 1, 0, angle])
             break
 
-    def walk_simplified(self, target, speed=None, debug=False):
+    def walk_simplified(self, target, speed=None, enable_bumper=False, debug=False):
         """
         Walks to a specific coordinate, without any animation.
 
         :param target: coordinate in the format (x, z)
         :param speed: walking speed in [m/s]
+        :param enable_bumper: Activates or deactivates the bumper collision detection
         :param debug: activate/deactivate debug output
         :return: None
         """
@@ -137,7 +138,10 @@ class HumanAgent(Agent):
         delta = 0.01 * speed    # When speed = 1, it ensures a movement of 1 m/s
         i = 0
         while self.step():
-            collision = self.is_bumper_pressed()
+            if enable_bumper:
+                collision = self.is_bumper_pressed()
+            else:
+                collision = False
             if not collision:
                 # Steps forward and memorizes the new position
                 i += delta
@@ -257,17 +261,6 @@ class HumanAgent(Agent):
                 print("I have stopped at: " + str(self.get_robot_position()))
                 return
 
-    def neutral_position(self):
-        """
-        Positions the human agent in a neutral position.
-
-        :return: None
-        """
-        while self.step():
-            for i in range(0, self.BODY_PARTS_NUMBER):
-                self.joints_position_field[i].setSFFloat(0.0)
-            break
-
     def approach_target(self, target_name, speed=None, debug=False):
         """
         Supervisor-version of search-and-approach: uses global knowledge of the world to identify the target coordinates
@@ -282,13 +275,49 @@ class HumanAgent(Agent):
             # If identified, gets its world position
             target_position = self.convert_to_2d_coords(target.getPosition())
             # Trace a path to the destination
-            path = self.path_planning(target_position)
+            path = self.path_planning(target_position, show=False)
             if path is not None:
+                print("Walking towards {0}".format(target_name))
                 for waypoint in path:
                     self.walk_simplified(waypoint, speed=speed, debug=debug)
                 self.turn_towards(target_position)
                 return True
         return False
+
+    def path_planning(self, goal, show=False):
+        """
+        Finds a path to reach a goal.
+
+        :param goal: (x,z) coordinates.
+        :param show: If True, visualizes the calculated path.
+        :return: Path as a list of coordinates, or None if not found.
+        """
+        kitchen_map = Kitchen()     # todo This has to go outside of the HumanAgent class, higher up
+        planner = RoboAStar(self.supervisor, kitchen_map, delta=0.45, min_distance=0.2, goal_radius=0.6)
+        start = self.get_robot_position()
+        if self.debug:
+            print("[PATH-PLANNING] From {0} to {1}. Searching...".format(start, goal))
+        path = list(planner.astar(start, goal, reversePath=False))
+        if self.debug:
+            print("[PATH-PLANNING] Path: {0}".format([waypoint for waypoint in path]))
+        if path is None:
+            print("[PATH-PLANNING] Unable to compute a path from {0} to {1}.".format(start, goal))
+        elif show:
+            for waypoint in path:
+                kitchen_map.add_point_to_plot(waypoint)
+            kitchen_map.visualize()
+        return path
+
+    def neutral_position(self):
+        """
+        Positions the human agent in a neutral position.
+
+        :return: None
+        """
+        while self.step():
+            for i in range(0, self.BODY_PARTS_NUMBER):
+                self.joints_position_field[i].setSFFloat(0.0)
+            break
 
     def hand_forward(self, steps=5):
         """
@@ -337,7 +366,17 @@ class HumanAgent(Agent):
         target: Node = self.all_nodes.get(target_name)
         if target is not None:
             self.object_in_hand = target
-            self.move_object_in_hand()
+            #self.move_object_in_hand()
+            self.object_in_hand.resetPhysics()
+            hand_translation, hand_rotation = self.get_hand_transform()
+            object_rotation = self.object_in_hand.getField("rotation").getSFRotation()
+            # Maintain the object's angle
+            hand_rotation[-1] = object_rotation[-1]
+            while self.step():
+                self.object_in_hand.getField("translation").setSFVec3f(hand_translation)
+                self.object_in_hand.getField("rotation").setSFRotation(hand_rotation)
+                break
+            self.step()
             return True
         return False
 
@@ -363,11 +402,16 @@ class HumanAgent(Agent):
                     table_height = table_size[1]
                     # Calculate the new position and assign it
                     final_position = [table_trans[0], table_height, table_trans[2]]
+
                     self.object_in_hand.getField("translation").setSFVec3f(final_position)
+                    print("Deposited the {0} in {1}".format(self.object_in_hand.getTypeName(), final_position))
                     # Free the hand and reset the stance
                     self.object_in_hand = None
                     self.neutral_position()
+
                     return True
+        else:
+            print("Can't find destination {0} to release object!".format(destination))
         return False
 
     def move_object_in_hand(self):
@@ -451,31 +495,17 @@ class HumanAgent(Agent):
                 all_nodes[name] = node
         return all_nodes
 
-    def path_planning(self, goal, show=False):
-        kitchen_map = Kitchen()     # todo This has to go outside of the HumanAgent class, higher up
-        planner = RoboAStar(self.supervisor, kitchen_map)
-        start = self.get_robot_position()
-        print("Searching...")
-        path = planner.astar(start, goal, reversePath=False)
-        print("Path: {0}".format(path))
-        if path is None:
-            print("Unable to compute a path from {0} to {1}.".format(start, goal))
-        elif show:
-            for waypoint in path:
-                kitchen_map.add_point_to_plot(waypoint)
-            kitchen_map.visualize()
-        return path
-
 
 # MAIN LOOP
 
 human = HumanAgent()
 speed = 2
+debug = False
 
 while human.step():
-    if human.approach_target("coca-cola", speed):
+    if human.approach_target("coca-cola", speed, debug):
         human.grasp_object("coca-cola")
-        if human.approach_target("table(1)", speed):
-            human.release_object("destination-table")
-            human.walk_simplified((0, 0), speed)
+        if human.approach_target("table(1)", speed, debug):
+            human.release_object("table(1)")
+            human.walk_simplified((0, 0), speed, debug)
     break

@@ -8,7 +8,7 @@ import numpy as np
 import cv2
 
 class Agent:
-    def __init__(self, supervisor=False):
+    def __init__(self, supervisor=False, debug=False):
         # Create the instance (Robot or Supervisor)
         if supervisor:
             self.supervisor = Supervisor()
@@ -37,6 +37,8 @@ class Agent:
         self.gps.enable(self.timestep)
         self.bumper.enable(self.timestep)
         self.distance_sensor.enable(self.timestep)
+
+        self.debug = debug
 
     def is_camera_active(self):
         """
