@@ -5,6 +5,14 @@
     <content url="file://$MODULE_DIR$">
       <excludeFolder url="file://$MODULE_DIR$/venv" />
     </content>
+    <content url="file://$MODULE_DIR$/../strands_qsr_lib-master/qsr_lib/src">
+      <sourceFolder url="file://$MODULE_DIR$/../strands_qsr_lib-master/qsr_lib/src/qsrlib" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../strands_qsr_lib-master/qsr_lib/src/qsrlib_io" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../strands_qsr_lib-master/qsr_lib/src/qsrlib_qsrs" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../strands_qsr_lib-master/qsr_lib/src/qsrlib_qstag" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../strands_qsr_lib-master/qsr_lib/src/qsrlib_ros" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../strands_qsr_lib-master/qsr_lib/src/qsrlib_utils" isTestSource="false" />
+    </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>

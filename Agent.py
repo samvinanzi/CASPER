@@ -7,36 +7,31 @@ from controller import Robot, Supervisor, Camera, RangeFinder, CameraRecognition
 import numpy as np
 import cv2
 
-class Agent:
-    def __init__(self, supervisor=False, debug=False):
-        # Create the instance (Robot or Supervisor)
-        if supervisor:
-            self.supervisor = Supervisor()
-            self.robot = self.supervisor.getSelf()
-        else:
-            self.robot = Robot()
 
+class Agent:
+    def __init__(self, debug=False):
+        # Create the instance (Robot or Supervisor)
+        self.supervisor = Supervisor()
         # Get the time step of the current world
-        if supervisor:
-            self.timestep = int(self.supervisor.getBasicTimeStep())
-        else:
-            self.timestep = int(self.robot.getBasicTimeStep())
+        self.timestep = int(self.supervisor.getBasicTimeStep())
+
+        # todo initialize through csv?
 
         # Initialize devices
         self.camera = Camera("camera")
         self.rangefinder = RangeFinder("range-finder")
-        self.gps = GPS("gps")
-        self.bumper = TouchSensor("touch sensor")
-        self.distance_sensor = DistanceSensor("distance sensor")
+        #self.gps = GPS("gps")
+        #self.bumper = TouchSensor("touch sensor")
+        #self.distance_sensor = DistanceSensor("distance sensor")
 
         # Enable devices
         self.camera.enable(self.timestep)
         self.camera.recognitionEnable(self.timestep)
         #self.camera.enableRecognitionSegmentation()
         self.rangefinder.enable(self.timestep)
-        self.gps.enable(self.timestep)
-        self.bumper.enable(self.timestep)
-        self.distance_sensor.enable(self.timestep)
+        #self.gps.enable(self.timestep)
+        #self.bumper.enable(self.timestep)
+        #self.distance_sensor.enable(self.timestep)
 
         self.debug = debug
 
@@ -47,7 +42,7 @@ class Agent:
         :return: True or False
         """
         if self.camera.getSamplingPeriod() == 0:
-            print("[ERROR] Camera on robot " + self.robot.getName() + " is not enabled.")
+            print("[ERROR] Camera on robot " + self.supervisor.getName() + " is not enabled.")
             return False
         return True
 
@@ -58,7 +53,7 @@ class Agent:
         :return: True or False
         """
         if self.rangefinder.getSamplingPeriod() == 0:
-            print("[ERROR] Range finder on robot " + self.robot.getName() + " is not enabled.")
+            print("[ERROR] Range finder on robot " + self.supervisor.getName() + " is not enabled.")
             return False
         return True
 
@@ -79,6 +74,15 @@ class Agent:
                 print(object_models)
             return objects
 
+    def objects_names(self, objects):
+        """
+        Converts a list of CameraRecognitionObject into a list of strings with their names.
+
+        :param objects: CameraRecognitionObject list
+        :return: str list
+        """
+        return [object.get_model().decode('utf-8') for object in objects]
+
     def get_object_from_set(self, target, objects):
         """
         Searches for the presence of a specific object in a list of CameraRecognitionObject and returns it.
@@ -87,7 +91,7 @@ class Agent:
         :param objects: list of CameraRecognitionObject
         :return: CameraRecognitionObject corresponding to the desired target, or None if not found
         """
-        object_models = [object.get_model().decode('utf-8') for object in objects]
+        object_models = self.objects_names(objects)
         try:
             index = object_models.index(target)
             return objects[index]
@@ -201,18 +205,4 @@ class Agent:
 
         :return: step
         """
-        if self.supervisor:
-            entity = self.supervisor
-        else:
-            entity = self.robot
-        return entity.step(self.timestep) != -1
-
-
-# # MAIN LOOP
-#
-# agent = Agent(supervisor=True)
-#
-# # Perform simulation steps until Webots is stopping the controller
-# while agent.step():
-#     objects = agent.observe(True)
-#     agent.show_camera_image(objects)
+        return self.supervisor.step(self.timestep) != -1

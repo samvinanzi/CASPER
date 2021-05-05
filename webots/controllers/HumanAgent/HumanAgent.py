@@ -13,7 +13,7 @@ from maps.Kitchen import Kitchen
 
 class HumanAgent(Agent):
     def __init__(self, debug=False):
-        Agent.__init__(self, supervisor=True, debug=debug)
+        Agent.__init__(self, debug=debug)
 
         self.all_nodes = self.obtain_all_nodes()
         self.object_in_hand: Node = None
