@@ -11,32 +11,18 @@ import cv2
 
 class Agent:
     def __init__(self, debug=False):
-        # Create the instance (Robot or Supervisor)
-        self.supervisor = Supervisor()
-        # Get the time step of the current world
-        self.timestep = int(self.supervisor.getBasicTimeStep())
-        self.currentlyPlaying = None    # Currently playing motion
-        self.all_nodes = self.obtain_all_nodes()  # Contains all the nodes in the scene, for Supervisory purposes
+        self.supervisor = Supervisor()                              # All agents have access to Supervisor functions
+        self.timestep = int(self.supervisor.getBasicTimeStep())     # Get the time step of the current world
+        self.currentlyPlaying = None                                # Currently playing motion
+        self.all_nodes = self.obtain_all_nodes()        # Contains all the nodes in the scene, for Supervisory purposes
+        self.debug = debug
 
-        # todo initialize devices through csv?
-
-        # Initialize devices
+        # Initialize common devices
         self.camera = Camera("camera")
         self.rangefinder = RangeFinder("range-finder")
         #self.gps = GPS("gps")
         #self.bumper = TouchSensor("touch sensor")
         #self.distance_sensor = DistanceSensor("distance sensor")
-
-        # Enable devices
-        self.camera.enable(self.timestep)
-        self.camera.recognitionEnable(self.timestep)
-        #self.camera.enableRecognitionSegmentation()
-        self.rangefinder.enable(self.timestep)
-        #self.gps.enable(self.timestep)
-        #self.bumper.enable(self.timestep)
-        #self.distance_sensor.enable(self.timestep)
-
-        self.debug = debug
 
     def obtain_all_nodes(self):
         """
@@ -59,7 +45,6 @@ class Agent:
             return all_nodes
         else:
             return None
-
 
     def is_camera_active(self):
         """
@@ -130,12 +115,13 @@ class Agent:
         :param object: CameraRecognitionObject item
         :return: Distance in meters
         """
-        # Retrieve the coordinates of the object
-        coordinates = tuple(object.get_position_on_image())
-        depth_image = self.rangefinder.getRangeImage()
-        # Gets the depth value from the depth image on the object coordinates
-        depth = self.rangefinder.rangeImageGetDepth(depth_image, self.rangefinder.getWidth())
-        return depth
+        if self.is_range_finder_active():
+            # Retrieve the coordinates of the object
+            coordinates = tuple(object.get_position_on_image())
+            depth_image = self.rangefinder.getRangeImage()
+            # Gets the depth value from the depth image on the object coordinates
+            depth = self.rangefinder.rangeImageGetDepth(depth_image, self.rangefinder.getWidth())
+            return depth
 
     def convert_to_2d_coords(self, world_coordinates):
         """
@@ -145,15 +131,6 @@ class Agent:
         :return: 2d world coordinates (x, z)
         """
         return (round(world_coordinates[0], 2), round(world_coordinates[2], 2))
-
-    def get_gps_position(self):
-        """
-        Sugar code to fetch GPS coordinates and convert them to a 2D position on the XZ plane.
-
-        :return: 2d world coordinates (x, z)
-        """
-        world_position = self.gps.getValues()
-        return self.convert_to_2d_coords(world_position)
 
     def is_bumper_pressed(self):
         """

@@ -17,6 +17,11 @@ class HumanAgent(Agent):
 
         self.object_in_hand: Node = None
 
+        # Enables and disables devices
+        self.camera.disable()
+        #self.camera.recognitionEnable(self.timestep)
+        self.rangefinder.disable()
+
         # Walking parameters
         self.BODY_PARTS_NUMBER = 13
         self.WALK_SEQUENCES_NUMBER = 8

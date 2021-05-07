@@ -22,16 +22,7 @@ class RobotAgent(Agent):
 
         # Initializes the world knowledge
         self.world_knowledge = {}                   # Coordinates of all the entities in the world
-        agents = ["myTiago++", "HumanAgent"]        # Humans and other robots will initially be unknown
-        excluded = ["CircleArena"]                  # Some environmental elements are not considered
-        for name, node in self.all_nodes.items():
-            node_type_name = node.getTypeName()     # Elements are filtered by type, not by name
-            if node_type_name not in excluded:
-                if node_type_name in agents:
-                    position = None
-                else:
-                    position = node.getPosition()
-                self.world_knowledge[name] = position
+        self.initialize_world_knowledge()
 
         # Devices
         self.motors = {'head_1': self.supervisor.getDevice("head_1_joint"),
@@ -55,9 +46,32 @@ class RobotAgent(Agent):
                        'wheel_right': self.supervisor.getDevice('wheel_right_joint')
                        }
         self.inertial = InertialUnit("inertial unit")
+
+        # Enables and disables devices
         self.inertial.enable(self.timestep)
+        self.camera.enable(self.timestep)
+        self.camera.recognitionEnable(self.timestep)
+        self.rangefinder.disable()
 
         print(str(self.__class__.__name__) + " has activated.")
+
+    def initialize_world_knowledge(self):
+        """
+        Initializes the world knowledge: static items have their initial coordinates, agents are unknown, environmental
+        objects are ignored.
+
+        :return: None
+        """
+        agents = ["HumanAgent"]  # Humans and other robots will initially be unknown
+        excluded = ["CircleArena", "myTiago++"]  # Some environmental elements and the robot itself are not considered
+        for name, node in self.all_nodes.items():
+            node_type_name = node.getTypeName()  # Elements are filtered by type, not by name
+            if node_type_name not in excluded:
+                if node_type_name in agents:
+                    position = None
+                else:
+                    position = node.getPosition()
+                self.world_knowledge[name] = position
 
     def get_target_coordinates(self, target_name):
         """
@@ -233,9 +247,8 @@ tracked_objects = ['can', 'pedestrian']
 # Perform simulation steps until Webots is stopping the controller
 robot.motion("neutral")
 while robot.step():
-    if robot.is_camera_active() and robot.is_range_finder_active():
+    if robot.is_camera_active():
         if robot.search_for("pedestrian"):
             robot.track_target("pedestrian")
         else:
             print("I didn't find the human!")
-
