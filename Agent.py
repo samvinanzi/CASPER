@@ -3,7 +3,8 @@ Generic Agent controller.
 Groups common methods between Humans and Robots.
 """
 
-from controller import Robot, Supervisor, Camera, RangeFinder, CameraRecognitionObject, GPS, TouchSensor, DistanceSensor
+from controller import Robot, Supervisor, Camera, RangeFinder, CameraRecognitionObject, GPS, TouchSensor, \
+    DistanceSensor, Field
 import numpy as np
 import cv2
 
@@ -14,8 +15,10 @@ class Agent:
         self.supervisor = Supervisor()
         # Get the time step of the current world
         self.timestep = int(self.supervisor.getBasicTimeStep())
+        self.currentlyPlaying = None    # Currently playing motion
+        self.all_nodes = self.obtain_all_nodes()  # Contains all the nodes in the scene, for Supervisory purposes
 
-        # todo initialize through csv?
+        # todo initialize devices through csv?
 
         # Initialize devices
         self.camera = Camera("camera")
@@ -34,6 +37,29 @@ class Agent:
         #self.distance_sensor.enable(self.timestep)
 
         self.debug = debug
+
+    def obtain_all_nodes(self):
+        """
+        Retrieves all the nodes from the current world and places them in a dictionary.
+
+        :return: dictionary[name] = node
+        """
+        root_node = self.supervisor.getRoot()
+        if root_node is not None:
+            root_node_children: Field = root_node.getField("children")
+            n = root_node_children.getCount()
+            all_nodes = {}
+            for i in range(n):
+                node = root_node_children.getMFNode(i)
+                name_field = node.getField("name")
+                # We just care about objects, we discard non-named entities
+                if name_field is not None:
+                    name = name_field.getSFString()
+                    all_nodes[name] = node
+            return all_nodes
+        else:
+            return None
+
 
     def is_camera_active(self):
         """
@@ -71,12 +97,11 @@ class Agent:
                 print("I have recognized " + str(n_obj) + " object" + ("s" if n_obj != 1 else "") + "!")
                 print("Objects detected: ")
                 object_models = [object.get_model().decode('utf-8') for object in objects]
-                print(object_models)
             return objects
 
-    def objects_names(self, objects):
+    def objects_models(self, objects):
         """
-        Converts a list of CameraRecognitionObject into a list of strings with their names.
+        Converts a list of CameraRecognitionObject into a list of strings with their models.
 
         :param objects: CameraRecognitionObject list
         :return: str list
@@ -91,7 +116,7 @@ class Agent:
         :param objects: list of CameraRecognitionObject
         :return: CameraRecognitionObject corresponding to the desired target, or None if not found
         """
-        object_models = self.objects_names(objects)
+        object_models = self.objects_models(objects)
         try:
             index = object_models.index(target)
             return objects[index]

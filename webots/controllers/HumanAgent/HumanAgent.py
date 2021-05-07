@@ -4,7 +4,7 @@ Derives from Agent.
 """
 
 from Agent import Agent
-from controller import Node, Field, Mouse
+from controller import Node, Field
 import math
 import numpy as np
 from path_planning.robot_astar import RoboAStar
@@ -15,7 +15,6 @@ class HumanAgent(Agent):
     def __init__(self, debug=False):
         Agent.__init__(self, debug=debug)
 
-        self.all_nodes = self.obtain_all_nodes()
         self.object_in_hand: Node = None
 
         # Walking parameters
@@ -476,25 +475,6 @@ class HumanAgent(Agent):
         #return t, r
         return hand_position, r
 
-    def obtain_all_nodes(self):
-        """
-        Retrieves all the nodes from the current world and places them in a dictionary.
-
-        :return: dictionary[name] = node
-        """
-        root_node = self.supervisor.getRoot()
-        root_node_children: Field = root_node.getField("children")
-        n = root_node_children.getCount()
-        all_nodes = {}
-        for i in range(n):
-            node = root_node_children.getMFNode(i)
-            name_field = node.getField("name")
-            # We just care about objects, we discard non-named entities
-            if name_field is not None:
-                name = name_field.getSFString()
-                all_nodes[name] = node
-        return all_nodes
-
 
 # MAIN LOOP
 
@@ -503,6 +483,12 @@ speed = 2
 debug = False
 
 while human.step():
+    """
+    human.walk_simplified((-2.73, 4.05), speed=0.2)
+    human.walk_simplified((-5.88, -4.21), speed=0.2)
+    human.walk_simplified((4.38679, -4.8212), speed=0.2)
+    human.walk_simplified((4.4642, -1.04344), speed=0.2)
+    """
     if human.approach_target("coca-cola", speed, debug):
         human.grasp_object("coca-cola")
         if human.approach_target("table(1)", speed, debug):
