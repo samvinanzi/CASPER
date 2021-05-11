@@ -11,18 +11,28 @@ from Agent import Agent
 from controller import CameraRecognitionObject, Field, InertialUnit, Motion
 import numpy as np
 import os
+from qsrlib.qsrlib import QSRlib, QSRlib_Request_Message
+from qsrlib_io.world_trace import Object_State, World_Trace
 
 MOTION_DIR = "motions"
 MOTION_EXT = ".motion"
+agents = ["HumanAgent"]                     # Humans and other robots will initially be unknown
+# Some environmental elements and the robot itself are not considered
+excluded = ["CircleArena", "myTiago++", "SolidBox", "Window", "Wall", "Cabinet", "Floor", "Ceiling", "Door",
+            "RoCKInShelf"]
 
 
 class RobotAgent(Agent):
     def __init__(self):
         Agent.__init__(self)
 
-        # Initializes the world knowledge
-        self.world_knowledge = {}                   # Coordinates of all the entities in the world
+        # World knowledge
+        self.last_timestep = -1             # Last discretized timestep in which activity was recorded
+        self.world_knowledge = {}           # Coordinates of all the entities in the world at present
         self.initialize_world_knowledge()
+        self.qsrlib = QSRlib()                 # Qualitative Spatial Relationship engine
+        self.world = World_Trace()          # Time-series coordinates of all the entities in the world
+        self.update_world_trace()
 
         # Devices
         self.motors = {'head_1': self.supervisor.getDevice("head_1_joint"),
@@ -62,8 +72,6 @@ class RobotAgent(Agent):
 
         :return: None
         """
-        agents = ["HumanAgent"]  # Humans and other robots will initially be unknown
-        excluded = ["CircleArena", "myTiago++"]  # Some environmental elements and the robot itself are not considered
         for name, node in self.all_nodes.items():
             node_type_name = node.getTypeName()  # Elements are filtered by type, not by name
             if node_type_name not in excluded:
@@ -72,6 +80,44 @@ class RobotAgent(Agent):
                 else:
                     position = node.getPosition()
                 self.world_knowledge[name] = position
+
+    def update_world_knowledge(self, objects, debug=False):
+        """
+        Real-time update of the world knowledge. Updates the coordinates of the observed objects.
+        This function should be called everytime the robot invokes observe().
+
+        :param objects: list of CameraRecognitionObjects
+        :return: None
+        """
+        for object in objects:
+            # Uses the id of the recognized object to retrieve its node in the scene tree
+            id = object.get_id()
+            node = self.supervisor.getFromId(id)
+            current_position = node.getPosition()
+            name_field = node.getField("name")
+            name = name_field.getSFString()
+            old_position = self.world_knowledge[name]
+            if current_position != old_position:
+                self.world_knowledge[name] = current_position
+                if debug:
+                    print("Updated the position of {0} to {1}".format(name, current_position))
+        self.update_world_trace()
+
+    def update_world_trace(self):
+        """
+        Initializes or updates the QSR world trace.
+
+        :return: None
+        """
+        current_timestep = int(self.supervisor.getTime())
+        if current_timestep > self.last_timestep:
+            for name, position in self.world_knowledge.items():
+                if position is not None:
+                    # todo add xsize, ysize, zsize?
+                    new_os = Object_State(name=name, timestamp=current_timestep,
+                                          x=position[0], y=position[1], z=position[2])
+                    self.world.add_object_state(new_os)
+            self.last_timestep = current_timestep
 
     def get_target_coordinates(self, target_name):
         """
@@ -217,26 +263,27 @@ class RobotAgent(Agent):
         else:
             print("[ERROR] Invalid motion name: {0}".format(motion_name))
 
-    def update_world_knowledge(self, objects, debug=False):
-        """
-        Real-time update of the world knowledge. Updates the coordinates of the observed objects.
-        This function should be called everytime the robot invokes observe().
+    def compute_qsr_test(self):
+        # TODO experimental
+        which_qsr = "mos"
+        qsrlib_request_message = QSRlib_Request_Message(which_qsr, self.world)
+        # request your QSRs
+        qsrlib_response_message = self.qsrlib.request_qsrs(req_msg=qsrlib_request_message)
+        # print out your QSRs
+        self.pretty_print_world_qsr_trace(which_qsr, qsrlib_response_message)
 
-        :param objects: list of CameraRecognitionObjects
-        :return: None
-        """
-        for object in objects:
-            # Uses the id of the recognized object to retrieve its node in the scene tree
-            id = object.get_id()
-            node = self.supervisor.getFromId(id)
-            current_position = node.getPosition()
-            name_field = node.getField("name")
-            name = name_field.getSFString()
-            old_position = self.world_knowledge[name]
-            if current_position != old_position:
-                self.world_knowledge[name] = current_position
-                if debug:
-                    print("Updated the position of {0} to {1}".format(name, current_position))
+    def pretty_print_world_qsr_trace(self, which_qsr, qsrlib_response_message):
+        print(which_qsr, "request was made at ", str(qsrlib_response_message.req_made_at)
+              + " and received at " + str(qsrlib_response_message.req_received_at)
+              + " and finished at " + str(qsrlib_response_message.req_finished_at))
+        print("---")
+        print("Response is:")
+        for t in qsrlib_response_message.qsrs.get_sorted_timestamps():
+            foo = str(t) + ": "
+            for k, v in zip(qsrlib_response_message.qsrs.trace[t].qsrs.keys(),
+                            qsrlib_response_message.qsrs.trace[t].qsrs.values()):
+                foo += str(k) + ":" + str(v.qsrlib) + "; "
+            print(foo)
 
 
 # MAIN LOOP
@@ -247,8 +294,15 @@ tracked_objects = ['can', 'pedestrian']
 # Perform simulation steps until Webots is stopping the controller
 robot.motion("neutral")
 while robot.step():
+    try:
+        timestamp = int(robot.supervisor.getTime())
+        human = robot.world.trace[timestamp].objects['human']
+        print("Human position: {0}, {1}, {2}".format(human.x, human.y, human.z))
+    except KeyError:
+        print("Human not located")
     if robot.is_camera_active():
         if robot.search_for("pedestrian"):
             robot.track_target("pedestrian")
+            robot.compute_qsr_test()
         else:
             print("I didn't find the human!")
