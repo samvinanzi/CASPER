@@ -140,6 +140,26 @@ class Agent:
         """
         return bool(self.bumper.getValue())
 
+    def busy_waiting(self, duration, debug=False):
+        """
+        Busy waiting, for a specified duration or infinitely.
+
+        :param duration: time to wait, in seconds. If -1, it loops infinitely.
+        :return: None
+        """
+        assert duration > 0 or duration == -1, "Duration has to be greater than 0, or exactly -1 for infinite waiting."
+        if debug:
+            print("{0} has gone asleep.".format(self.__class__.__name__))
+        start = self.supervisor.getTime()
+        if duration == -1:
+            end = float('inf')
+        else:
+            end = start + duration
+        while self.supervisor.getTime() < end:
+            self.step()
+        if debug:
+            print("{0} has awoken.".format(self.__class__.__name__))
+
     def show_camera_image(self, objectlist=None, segmented=False):
         """
         Displays the camera stream from the robot on an OpenCV window.

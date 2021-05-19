@@ -20,6 +20,7 @@ agents = ["HumanAgent"]                     # Humans and other robots will initi
 # Some environmental elements and the robot itself are not considered
 excluded = ["CircleArena", "myTiago++", "SolidBox", "Window", "Wall", "Cabinet", "Floor", "Ceiling", "Door",
             "RoCKInShelf"]
+included = ["coca-cola", "human", "table(1)"]
 
 
 class RobotAgent(Agent):
@@ -74,7 +75,8 @@ class RobotAgent(Agent):
         """
         for name, node in self.all_nodes.items():
             node_type_name = node.getTypeName()  # Elements are filtered by type, not by name
-            if node_type_name not in excluded:
+            if name in included:
+            #if node_type_name not in excluded:
                 if node_type_name in agents:
                     position = None
                 else:
@@ -96,14 +98,16 @@ class RobotAgent(Agent):
             current_position = node.getPosition()
             name_field = node.getField("name")
             name = name_field.getSFString()
-            old_position = self.world_knowledge[name]
-            if current_position != old_position:
-                self.world_knowledge[name] = current_position
-                if debug:
-                    print("Updated the position of {0} to {1}".format(name, current_position))
-        self.update_world_trace()
+            if name in included:
+                old_position = self.world_knowledge[name]
+                if current_position != old_position:
+                    self.world_knowledge[name] = current_position
+                    if debug:
+                        print("Updated the position of {0} to {1}".format(name, current_position))
+        # Also updates the world trace
+        self.update_world_trace(debug=debug)
 
-    def update_world_trace(self):
+    def update_world_trace(self, debug=False):
         """
         Initializes or updates the QSR world trace.
 
@@ -117,6 +121,9 @@ class RobotAgent(Agent):
                     new_os = Object_State(name=name, timestamp=current_timestep,
                                           x=position[0], y=position[1], z=position[2])
                     self.world.add_object_state(new_os)
+                    if debug:
+                        print("Added {0} to world trace in position [{1}, {2}, {3}] at timestamp {4}.".format(
+                            new_os.name, new_os.x, new_os.y, new_os.z, new_os.timestamp))
             self.last_timestep = current_timestep
 
     def get_target_coordinates(self, target_name):
@@ -265,12 +272,31 @@ class RobotAgent(Agent):
 
     def compute_qsr_test(self):
         # TODO experimental
-        which_qsr = "mos"
-        qsrlib_request_message = QSRlib_Request_Message(which_qsr, self.world)
-        # request your QSRs
+        which_qsr = ["argd", "qtcbs"]
+        dynamic_args = {
+            "for_all_qsrs": {
+                #"qsrs_for": [("human", "coca-cola"), ("human", "table(1)")]
+                "qsrs_for": [("human", "coca-cola")]
+            },
+            "argd": {
+                "qsr_relations_and_values": {"touch": 1, "near": 2, "medium": 4, "far": 8}
+            },
+            "qtcbs": {
+                "quantisation_factor": 0.01,
+                "validate": False,
+                "no_collapse": True
+            },
+            "qstag": {
+                "params": {"min_rows": 1, "max_rows": 1, "max_eps": 3},
+                "object_types": {"human": "Human",
+                                "coca-cola": "Coke"},
+                                #"table(1)": "Table"}
+            }
+        }
+        qsrlib_request_message = QSRlib_Request_Message(which_qsr, self.world, dynamic_args=dynamic_args)
         qsrlib_response_message = self.qsrlib.request_qsrs(req_msg=qsrlib_request_message)
-        # print out your QSRs
         self.pretty_print_world_qsr_trace(which_qsr, qsrlib_response_message)
+        return qsrlib_response_message
 
     def pretty_print_world_qsr_trace(self, which_qsr, qsrlib_response_message):
         print(which_qsr, "request was made at ", str(qsrlib_response_message.req_made_at)
@@ -282,7 +308,7 @@ class RobotAgent(Agent):
             foo = str(t) + ": "
             for k, v in zip(qsrlib_response_message.qsrs.trace[t].qsrs.keys(),
                             qsrlib_response_message.qsrs.trace[t].qsrs.values()):
-                foo += str(k) + ":" + str(v.qsrlib) + "; "
+                foo += str(k) + ":" + str(v.qsr) + "; "
             print(foo)
 
 
@@ -292,17 +318,17 @@ robot = RobotAgent()
 tracked_objects = ['can', 'pedestrian']
 
 # Perform simulation steps until Webots is stopping the controller
-robot.motion("neutral")
+#robot.motion("neutral")
+#next_test = 30.0
 while robot.step():
-    try:
-        timestamp = int(robot.supervisor.getTime())
-        human = robot.world.trace[timestamp].objects['human']
-        print("Human position: {0}, {1}, {2}".format(human.x, human.y, human.z))
-    except KeyError:
-        print("Human not located")
     if robot.is_camera_active():
         if robot.search_for("pedestrian"):
             robot.track_target("pedestrian")
-            robot.compute_qsr_test()
+            #if robot.supervisor.getTime() >= next_test:
+                #next_test *= 2
+                #robot.compute_qsr_test()
+            if robot.supervisor.getTime() > 30:
+                qsr_response = robot.compute_qsr_test()
+                print(qsr_response.qstag.episodes)
         else:
             print("I didn't find the human!")

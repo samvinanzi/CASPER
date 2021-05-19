@@ -494,9 +494,11 @@ while human.step():
     human.walk_simplified((4.38679, -4.8212), speed=0.2)
     human.walk_simplified((4.4642, -1.04344), speed=0.2)
     """
+    human.busy_waiting(1)
     if human.approach_target("coca-cola", speed, debug):
         human.grasp_object("coca-cola")
         if human.approach_target("table(1)", speed, debug):
             human.release_object("table(1)")
             human.walk_simplified((0, 0), speed, debug)
+            human.busy_waiting(-1)
     break
