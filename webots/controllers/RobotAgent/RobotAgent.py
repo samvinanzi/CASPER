@@ -13,6 +13,7 @@ import numpy as np
 import os
 from qsrlib.qsrlib import QSRlib, QSRlib_Request_Message
 from qsrlib_io.world_trace import Object_State, World_Trace
+import qsrlib_qstag.utils as qsr_utils
 
 MOTION_DIR = "motions"
 MOTION_EXT = ".motion"
@@ -32,7 +33,7 @@ class RobotAgent(Agent):
         self.world_knowledge = {}           # Coordinates of all the entities in the world at present
         self.initialize_world_knowledge()
         self.qsrlib = QSRlib()                 # Qualitative Spatial Relationship engine
-        self.world = World_Trace()          # Time-series coordinates of all the entities in the world
+        self.world_trace = World_Trace()          # Time-series coordinates of all the entities in the world
         self.update_world_trace()
 
         # Devices
@@ -98,12 +99,27 @@ class RobotAgent(Agent):
             current_position = node.getPosition()
             name_field = node.getField("name")
             name = name_field.getSFString()
+            typename = node.getTypeName()
+            held_objects_corrections = {}
             if name in included:
                 old_position = self.world_knowledge[name]
                 if current_position != old_position:
                     self.world_knowledge[name] = current_position
                     if debug:
                         print("Updated the position of {0} to {1}".format(name, current_position))
+                # If the node is the human, check if they are holding items in their hands. If this is the case,
+                # prepare a list of corrections (they must be registered at the same position of the human)
+                if typename == "HumanAgent":
+                    object_held_field: Field = node.getField("heldObjectReference")
+                    object_held_id = object_held_field.getSFInt32()
+                    if object_held_id != 0:
+                        held_objects_corrections[object_held_id] = current_position
+                # Go through the corrections
+                for key, value in held_objects_corrections.items():
+                    node_to_correct = self.supervisor.getFromId(key)
+                    name_field = node_to_correct.getField("name")
+                    name = name_field.getSFString()
+                    self.world_knowledge[name] = value
         # Also updates the world trace
         self.update_world_trace(debug=debug)
 
@@ -119,8 +135,8 @@ class RobotAgent(Agent):
                 if position is not None:
                     # todo add xsize, ysize, zsize?
                     new_os = Object_State(name=name, timestamp=current_timestep,
-                                          x=position[0], y=position[1], z=position[2])
-                    self.world.add_object_state(new_os)
+                                          x=position[0], y=position[2]) #, z=position[1]
+                    self.world_trace.add_object_state(new_os)
                     if debug:
                         print("Added {0} to world trace in position [{1}, {2}, {3}] at timestamp {4}.".format(
                             new_os.name, new_os.x, new_os.y, new_os.z, new_os.timestamp))
@@ -272,28 +288,35 @@ class RobotAgent(Agent):
 
     def compute_qsr_test(self):
         # TODO experimental
-        which_qsr = ["argd", "qtcbs"]
+        which_qsr = ["argd", "qtcbs", "mos"]
+        #which_qsr = ["mos"]
+        dynamic_argsx = {"mos":{"qsr_for": ["human"]}}
         dynamic_args = {
-            "for_all_qsrs": {
-                #"qsrs_for": [("human", "coca-cola"), ("human", "table(1)")]
-                "qsrs_for": [("human", "coca-cola")]
-            },
+            #"for_all_qsrs": {
+            #    "qsrs_for": [("human", "coca-cola"), ("human", "table(1)")]
+            #},
             "argd": {
+                "qsrs_for": [("human", "coca-cola"), ("human", "table(1)")],
                 "qsr_relations_and_values": {"touch": 1, "near": 2, "medium": 4, "far": 8}
             },
             "qtcbs": {
+                "qsrs_for": [("human", "coca-cola"), ("human", "table(1)")],
                 "quantisation_factor": 0.01,
                 "validate": False,
                 "no_collapse": True
             },
-            "qstag": {
-                "params": {"min_rows": 1, "max_rows": 1, "max_eps": 3},
-                "object_types": {"human": "Human",
-                                "coca-cola": "Coke"},
-                                #"table(1)": "Table"}
-            }
+            "mos": {
+                "qsr_for": ["human", "coca-cola"],
+                "quantisation_factor": 0.0
+            },
+            #"qstag": {
+            #    "params": {"min_rows": 1, "max_rows": 1, "max_eps": 3},
+            #    "object_types": {"human": "Human",
+            #                    "coca-cola": "Coke"},
+            #                    #"table(1)": "Table"}
+            #}
         }
-        qsrlib_request_message = QSRlib_Request_Message(which_qsr, self.world, dynamic_args=dynamic_args)
+        qsrlib_request_message = QSRlib_Request_Message(which_qsr, self.world_trace, dynamic_args=dynamic_args)
         qsrlib_response_message = self.qsrlib.request_qsrs(req_msg=qsrlib_request_message)
         self.pretty_print_world_qsr_trace(which_qsr, qsrlib_response_message)
         return qsrlib_response_message
@@ -327,8 +350,24 @@ while robot.step():
             #if robot.supervisor.getTime() >= next_test:
                 #next_test *= 2
                 #robot.compute_qsr_test()
-            if robot.supervisor.getTime() > 30:
+            if robot.supervisor.getTime() > 35:
                 qsr_response = robot.compute_qsr_test()
-                print(qsr_response.qstag.episodes)
+                #qstag = qsr_response.qstag
+                #qsr_utils.graph2dot(qstag, "graph.dot")
+
+                #print("Episodes:")
+                #for i in qstag.episodes:
+                #    print(i)
+
+                #print("\n,Graphlets:")
+                #for i, j in qstag.graphlets.graphlets.items():
+                #    print("\n", j)
+
+                #print("\nCodebook:")
+                #print(qstag.graphlets.code_book)
+
+                #print("\nHistogram of Graphlets:")
+                #print(qstag.graphlets.histogram)
+                break
         else:
             print("I didn't find the human!")

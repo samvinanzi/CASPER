@@ -370,6 +370,8 @@ class HumanAgent(Agent):
         target: Node = self.all_nodes.get(target_name)
         if target is not None:
             self.object_in_hand = target
+            object_held_field: Field = self.supervisor.getSelf().getField("heldObjectReference")
+            object_held_field.setSFInt32(target.getId())
             #self.move_object_in_hand()
             self.object_in_hand.resetPhysics()
             hand_translation, hand_rotation = self.get_hand_transform()
@@ -381,6 +383,7 @@ class HumanAgent(Agent):
                 self.object_in_hand.getField("rotation").setSFRotation(hand_rotation)
                 break
             self.step()
+            self.busy_waiting(1)
             return True
         return False
 
@@ -411,8 +414,10 @@ class HumanAgent(Agent):
                     print("Deposited the {0} in {1}".format(self.object_in_hand.getTypeName(), final_position))
                     # Free the hand and reset the stance
                     self.object_in_hand = None
+                    object_held_field: Field = self.supervisor.getSelf().getField("heldObjectReference")
+                    object_held_field.setSFInt32(0)
+                    self.busy_waiting(1)
                     self.neutral_position()
-
                     return True
         else:
             print("Can't find destination {0} to release object!".format(destination))
