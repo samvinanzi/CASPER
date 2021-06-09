@@ -6,6 +6,7 @@ TIAGo++: https://www.cyberbotics.com/doc/guide/tiagopp?version=master
 """
 import math
 import time
+import pickle
 
 from Agent import Agent
 from controller import CameraRecognitionObject, Field, InertialUnit, Motion
@@ -14,13 +15,16 @@ import os
 from qsrlib.qsrlib import QSRlib, QSRlib_Request_Message
 from qsrlib_io.world_trace import Object_State, World_Trace
 import qsrlib_qstag.utils as qsr_utils
+from Dataframe import *
 
+BASEDIR = "..\..\..\..\THRIVE++"
+PICKLE_DIR = "data\pickle"
 MOTION_DIR = "motions"
 MOTION_EXT = ".motion"
 agents = ["HumanAgent"]                     # Humans and other robots will initially be unknown
 # Some environmental elements and the robot itself are not considered
 excluded = ["CircleArena", "myTiago++", "SolidBox", "Window", "Wall", "Cabinet", "Floor", "Ceiling", "Door",
-            "RoCKInShelf"]
+            "RoCKInShelf", "GM"]
 included = ["coca-cola", "human", "table(1)"]
 
 
@@ -133,9 +137,26 @@ class RobotAgent(Agent):
         if current_timestep > self.last_timestep:
             for name, position in self.world_knowledge.items():
                 if position is not None:
+                    # If we are dealing with a human, let's register their specific states
+                    if name == "human":
+                        node = self.all_nodes.get(name)
+                        # HOLD state
+                        object_held_field: Field = node.getField("heldObjectReference")
+                        object_held_id = object_held_field.getSFInt32()
+                        hold = object_held_id != 0
+                        # Training label (if it exists)
+                        training_label_field: Field = node.getField("trainingTaskLabel")
+                        training_label = training_label_field.getSFString()
+                    else:
+                        hold = None
+                        training_label = None
                     # todo add xsize, ysize, zsize?
-                    new_os = Object_State(name=name, timestamp=current_timestep,
-                                          x=position[0], y=position[2]) #, z=position[1]
+                    if name == "human":
+                        new_os = Object_State(name=name, timestamp=current_timestep,
+                                              x=position[0], y=position[2], hold=hold, label=training_label)
+                    else:
+                        new_os = Object_State(name=name, timestamp=current_timestep,
+                                              x=position[0], y=position[2])
                     self.world_trace.add_object_state(new_os)
                     if debug:
                         print("Added {0} to world trace in position [{1}, {2}, {3}] at timestamp {4}.".format(
@@ -289,12 +310,7 @@ class RobotAgent(Agent):
     def compute_qsr_test(self):
         # TODO experimental
         which_qsr = ["argd", "qtcbs", "mos"]
-        #which_qsr = ["mos"]
-        dynamic_argsx = {"mos":{"qsr_for": ["human"]}}
         dynamic_args = {
-            #"for_all_qsrs": {
-            #    "qsrs_for": [("human", "coca-cola"), ("human", "table(1)")]
-            #},
             "argd": {
                 "qsrs_for": [("human", "coca-cola"), ("human", "table(1)")],
                 "qsr_relations_and_values": {"touch": 1, "near": 2, "medium": 4, "far": 8}
@@ -306,15 +322,9 @@ class RobotAgent(Agent):
                 "no_collapse": True
             },
             "mos": {
-                "qsr_for": ["human", "coca-cola"],
+                "qsr_for": ["human"],
                 "quantisation_factor": 0.0
-            },
-            #"qstag": {
-            #    "params": {"min_rows": 1, "max_rows": 1, "max_eps": 3},
-            #    "object_types": {"human": "Human",
-            #                    "coca-cola": "Coke"},
-            #                    #"table(1)": "Table"}
-            #}
+            }
         }
         qsrlib_request_message = QSRlib_Request_Message(which_qsr, self.world_trace, dynamic_args=dynamic_args)
         qsrlib_response_message = self.qsrlib.request_qsrs(req_msg=qsrlib_request_message)
@@ -334,6 +344,38 @@ class RobotAgent(Agent):
                 foo += str(k) + ":" + str(v.qsr) + "; "
             print(foo)
 
+    '''
+    def process_data(self, picklefile, label="UNKNOWN"):
+        file = os.path.join(BASEDIR, PICKLE_DIR, picklefile)
+        if os.path.isfile(file):
+            qsr_response = pickle.load(open(file, "rb"))
+            for t in qsr_response.qsrs.get_sorted_timestamps():
+                for k, v in zip(qsr_response.qsrs.trace[t].qsrs.keys(), qsr_response.qsrs.trace[t].qsrs.values()):
+                    print("{0} : {1}".format(k, v))
+        pass
+    '''
+
+    def process_data(self, qsr_response, current_timestamp=0):
+        # DEBUG:
+        file = os.path.join(BASEDIR, PICKLE_DIR, 'qsr_response.p')
+        qsr_response = pickle.load(open(file, "rb"))
+        ep = Episode(time=current_timestamp)
+        # world_qsr.trace[4].qsrs['o1,o2'].qsr['rcc8']
+        trace = qsr_response.qsrs.trace[current_timestamp]
+        try:
+            human_trace = trace.qsrs['human']
+            hf = HumanFrame()
+            hf.MOS = human_trace.qsr['mos']
+            # Find the objects
+            k = trace.qsrs.keys()
+
+        except KeyError:
+            human_trace = None
+        for t in qsr_response.qsrs.get_sorted_timestamps():
+            for k, v in zip(qsr_response.qsrs.trace[t].qsrs.keys(), qsr_response.qsrs.trace[t].qsrs.values()):
+                pass
+
+
 
 # MAIN LOOP
 
@@ -342,32 +384,14 @@ tracked_objects = ['can', 'pedestrian']
 
 # Perform simulation steps until Webots is stopping the controller
 #robot.motion("neutral")
-#next_test = 30.0
 while robot.step():
     if robot.is_camera_active():
         if robot.search_for("pedestrian"):
             robot.track_target("pedestrian")
-            #if robot.supervisor.getTime() >= next_test:
-                #next_test *= 2
-                #robot.compute_qsr_test()
             if robot.supervisor.getTime() > 35:
                 qsr_response = robot.compute_qsr_test()
-                #qstag = qsr_response.qstag
-                #qsr_utils.graph2dot(qstag, "graph.dot")
-
-                #print("Episodes:")
-                #for i in qstag.episodes:
-                #    print(i)
-
-                #print("\n,Graphlets:")
-                #for i, j in qstag.graphlets.graphlets.items():
-                #    print("\n", j)
-
-                #print("\nCodebook:")
-                #print(qstag.graphlets.code_book)
-
-                #print("\nHistogram of Graphlets:")
-                #print(qstag.graphlets.histogram)
+                pickle.dump(qsr_response, open(os.path.join(BASEDIR, "data\pickle\qsr_response.p"), "wb"))
+                pickle.dump(robot.world_trace, open(os.path.join(BASEDIR, "data\pickle\world_trace.p"), "wb"))
                 break
         else:
             print("I didn't find the human!")

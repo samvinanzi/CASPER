@@ -2,6 +2,7 @@
 HumanAgent controller.
 Derives from Agent.
 """
+import copy
 
 from Agent import Agent
 from controller import Node, Field
@@ -16,6 +17,7 @@ class HumanAgent(Agent):
         Agent.__init__(self, debug=debug)
 
         self.object_in_hand: Node = None
+        #self.object_in_hand_physics: Node = None   todo investigate this later, maybe
 
         # Enables and disables devices
         self.camera.disable()
@@ -112,6 +114,10 @@ class HumanAgent(Agent):
         :param debug: activate/deactivate debug output
         :return: None
         """
+        if self.object_in_hand:
+            self.update_training_label("TRANSPORT")
+        else:
+            self.update_training_label("WALK")
         if speed is None:
             speed = self.speed
         # Calculates the waypoints (including the starting position)
@@ -366,10 +372,15 @@ class HumanAgent(Agent):
         :return: True if successful, False otherwise
         """
         assert isinstance(target_name, str), "Must specify a string name to search for"
+        self.update_training_label("PICK")
         self.hand_forward()
         target: Node = self.all_nodes.get(target_name)
         if target is not None:
             self.object_in_hand = target
+            # todo is it possible to disable / re-enable physics on the node that is being grasped?
+            #physics_field: Field = target.getProtoField("physics")
+            #self.object_in_hand_physics = copy.deepcopy(physics_field)
+            #physics_field.removeMFNode(0)
             object_held_field: Field = self.supervisor.getSelf().getField("heldObjectReference")
             object_held_field.setSFInt32(target.getId())
             #self.move_object_in_hand()
@@ -383,7 +394,7 @@ class HumanAgent(Agent):
                 self.object_in_hand.getField("rotation").setSFRotation(hand_rotation)
                 break
             self.step()
-            self.busy_waiting(1)
+            self.busy_waiting(1, label="PICK")
             return True
         return False
 
@@ -394,6 +405,7 @@ class HumanAgent(Agent):
         :return: True if successful, False otherwise
         """
         assert isinstance(destination, str), "Must specify a string name to search for"
+        self.update_training_label("PLACE")
         if self.object_in_hand is not None:
             target: Node = self.all_nodes.get(destination)
             if target is not None:
@@ -416,7 +428,7 @@ class HumanAgent(Agent):
                     self.object_in_hand = None
                     object_held_field: Field = self.supervisor.getSelf().getField("heldObjectReference")
                     object_held_field.setSFInt32(0)
-                    self.busy_waiting(1)
+                    self.busy_waiting(1, label="PLACE")
                     self.neutral_position()
                     return True
         else:
@@ -485,6 +497,43 @@ class HumanAgent(Agent):
         #return t, r
         return hand_position, r
 
+    def busy_waiting(self, duration, label="STILL", debug=False):
+        """
+        Busy waiting, for a specified duration or infinitely.
+        Overloaded method from Agent, in which the hand-held object's physics is resetted (not perfectly).
+
+        :param duration: time to wait, in seconds. If -1, it loops infinitely.
+        :param label: defines the training label for this activity.
+        :param debug: debug output activation.
+        :return: None
+        """
+        assert duration > 0 or duration == -1, "Duration has to be greater than 0, or exactly -1 for infinite waiting."
+        self.update_training_label(label)
+        if debug:
+            print("{0} has gone asleep.".format(self.__class__.__name__))
+        start = self.supervisor.getTime()
+        if duration == -1:
+            end = float('inf')
+        else:
+            end = start + duration
+        while self.supervisor.getTime() < end:
+            if self.object_in_hand:
+                self.object_in_hand.resetPhysics()
+            self.step()
+            if self.object_in_hand:
+                self.object_in_hand.resetPhysics()
+        if debug:
+            print("{0} has awoken.".format(self.__class__.__name__))
+
+    def update_training_label(self, label=""):
+        """
+        Updates the training task label.
+
+        :param label: str, defaults to empty
+        :return: None
+        """
+        label_field: Field = self.supervisor.getSelf().getField("trainingTaskLabel")
+        label_field.setSFString(label)
 
 # MAIN LOOP
 
@@ -499,11 +548,11 @@ while human.step():
     human.walk_simplified((4.38679, -4.8212), speed=0.2)
     human.walk_simplified((4.4642, -1.04344), speed=0.2)
     """
-    human.busy_waiting(1)
+    human.busy_waiting(1, label="STILL")
     if human.approach_target("coca-cola", speed, debug):
         human.grasp_object("coca-cola")
         if human.approach_target("table(1)", speed, debug):
             human.release_object("table(1)")
             human.walk_simplified((0, 0), speed, debug)
-            human.busy_waiting(-1)
+            human.busy_waiting(-1, label="STILL")
     break
