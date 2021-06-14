@@ -12,6 +12,7 @@ PROTO HumanAgent [
   field       MFString   controllerArgs        []
   field       SFInt32    heldObjectReference   0
   field       SFString   trainingTaskLabel     ""
+  field       SFString   trainingTaskTarget    ""
   field       SFColor    shirtColor            0.25 0.55 0.20
   field       SFColor    pantsColor            0.24 0.25 0.5
   field       SFColor    shoesColor            0.28 0.15 0.06

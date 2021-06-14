@@ -114,10 +114,6 @@ class HumanAgent(Agent):
         :param debug: activate/deactivate debug output
         :return: None
         """
-        if self.object_in_hand:
-            self.update_training_label("TRANSPORT")
-        else:
-            self.update_training_label("WALK")
         if speed is None:
             speed = self.speed
         # Calculates the waypoints (including the starting position)
@@ -287,6 +283,13 @@ class HumanAgent(Agent):
             # Trace a path to the destination
             path = self.path_planning(target_position, show=False)
             if path is not None:
+                # Updates the training fields
+                if self.object_in_hand:
+                    self.update_training_label("TRANSPORT")
+                    self.update_training_target(target_name)
+                else:
+                    self.update_training_label("WALK")
+                    self.update_training_target(target_name)
                 print("Walking towards {0}".format(target_name))
                 for waypoint in path:
                     self.walk_simplified(waypoint, speed=speed, debug=debug)
@@ -373,6 +376,7 @@ class HumanAgent(Agent):
         """
         assert isinstance(target_name, str), "Must specify a string name to search for"
         self.update_training_label("PICK")
+        self.update_training_target(target_name)
         self.hand_forward()
         target: Node = self.all_nodes.get(target_name)
         if target is not None:
@@ -409,6 +413,7 @@ class HumanAgent(Agent):
         if self.object_in_hand is not None:
             target: Node = self.all_nodes.get(destination)
             if target is not None:
+                self.update_training_target(destination)
                 # Verifies that the destination is an acceptable surface
                 accepted_types = ["Table"]
                 if target.getTypeName() not in accepted_types:
@@ -509,6 +514,7 @@ class HumanAgent(Agent):
         """
         assert duration > 0 or duration == -1, "Duration has to be greater than 0, or exactly -1 for infinite waiting."
         self.update_training_label(label)
+        self.update_training_target("")
         if debug:
             print("{0} has gone asleep.".format(self.__class__.__name__))
         start = self.supervisor.getTime()
@@ -533,6 +539,16 @@ class HumanAgent(Agent):
         :return: None
         """
         label_field: Field = self.supervisor.getSelf().getField("trainingTaskLabel")
+        label_field.setSFString(label)
+
+    def update_training_target(self, label=""):
+        """
+        Updates the training task target.
+
+        :param label: str, defaults to empty
+        :return: None
+        """
+        label_field: Field = self.supervisor.getSelf().getField("trainingTaskTarget")
         label_field.setSFString(label)
 
 # MAIN LOOP

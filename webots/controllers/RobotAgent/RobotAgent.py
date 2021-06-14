@@ -147,13 +147,18 @@ class RobotAgent(Agent):
                         # Training label (if it exists)
                         training_label_field: Field = node.getField("trainingTaskLabel")
                         training_label = training_label_field.getSFString()
+                        # Training target
+                        training_target_field: Field = node.getField("trainingTaskTarget")
+                        training_target = training_target_field.getSFString()
                     else:
                         hold = None
                         training_label = None
+                        training_target = None
                     # todo add xsize, ysize, zsize?
                     if name == "human":
                         new_os = Object_State(name=name, timestamp=current_timestep,
-                                              x=position[0], y=position[2], hold=hold, label=training_label)
+                                              x=position[0], y=position[2], hold=hold, label=training_label,
+                                              target=training_target)
                     else:
                         new_os = Object_State(name=name, timestamp=current_timestep,
                                               x=position[0], y=position[2])
@@ -313,7 +318,7 @@ class RobotAgent(Agent):
         dynamic_args = {
             "argd": {
                 "qsrs_for": [("human", "coca-cola"), ("human", "table(1)")],
-                "qsr_relations_and_values": {"touch": 1, "near": 2, "medium": 4, "far": 8}
+                "qsr_relations_and_values": {"touch": 0.6, "near": 1, "medium": 3, "far": 5}
             },
             "qtcbs": {
                 "qsrs_for": [("human", "coca-cola"), ("human", "table(1)")],
