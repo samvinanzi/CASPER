@@ -85,6 +85,17 @@ class HumanAgent(Agent):
         orientation.reshape(3, 3)
         return orientation
 
+    def get_in_hand_name(self):
+        """
+        Retrieves the name of the handheld object.
+
+        :return: str name.
+        """
+        if self.object_in_hand is not None:
+            return self.object_in_hand.getField("name").getSFString()
+        else:
+            return None
+
     def turn_towards(self, target):
         """
         Rotates the robot, in place, towards the target.
@@ -283,14 +294,15 @@ class HumanAgent(Agent):
             # Trace a path to the destination
             path = self.path_planning(target_position, show=False)
             if path is not None:
+                print("Walking towards {0}".format(target_name))
                 # Updates the training fields
                 if self.object_in_hand:
                     self.update_training_label("TRANSPORT")
-                    self.update_training_target(target_name)
+                    # If they are transporting, the target is the object, nor the destination
+                    self.update_training_target(self.get_in_hand_name())
                 else:
                     self.update_training_label("WALK")
                     self.update_training_target(target_name)
-                print("Walking towards {0}".format(target_name))
                 for waypoint in path:
                     self.walk_simplified(waypoint, speed=speed, debug=debug)
                 self.turn_towards(target_position)
@@ -375,16 +387,10 @@ class HumanAgent(Agent):
         :return: True if successful, False otherwise
         """
         assert isinstance(target_name, str), "Must specify a string name to search for"
-        self.update_training_label("PICK")
-        self.update_training_target(target_name)
         self.hand_forward()
         target: Node = self.all_nodes.get(target_name)
         if target is not None:
             self.object_in_hand = target
-            # todo is it possible to disable / re-enable physics on the node that is being grasped?
-            #physics_field: Field = target.getProtoField("physics")
-            #self.object_in_hand_physics = copy.deepcopy(physics_field)
-            #physics_field.removeMFNode(0)
             object_held_field: Field = self.supervisor.getSelf().getField("heldObjectReference")
             object_held_field.setSFInt32(target.getId())
             #self.move_object_in_hand()
@@ -393,12 +399,15 @@ class HumanAgent(Agent):
             object_rotation = self.object_in_hand.getField("rotation").getSFRotation()
             # Maintain the object's angle
             hand_rotation[-1] = object_rotation[-1]
+            self.busy_waiting(2, label="PICK", target=target_name)    # wait
+            self.update_training_label("PICK")
+            self.update_training_target(target_name)
             while self.step():
                 self.object_in_hand.getField("translation").setSFVec3f(hand_translation)
                 self.object_in_hand.getField("rotation").setSFRotation(hand_rotation)
                 break
             self.step()
-            self.busy_waiting(1, label="PICK")
+            self.busy_waiting(1, label="PICK", target=target_name)  # wait
             return True
         return False
 
@@ -409,31 +418,32 @@ class HumanAgent(Agent):
         :return: True if successful, False otherwise
         """
         assert isinstance(destination, str), "Must specify a string name to search for"
-        self.update_training_label("PLACE")
         if self.object_in_hand is not None:
-            target: Node = self.all_nodes.get(destination)
-            if target is not None:
-                self.update_training_target(destination)
+            destination: Node = self.all_nodes.get(destination)
+            if destination is not None:
+                target_name = self.object_in_hand.getField("name").getSFString()
                 # Verifies that the destination is an acceptable surface
                 accepted_types = ["Table"]
-                if target.getTypeName() not in accepted_types:
+                if destination.getTypeName() not in accepted_types:
                     print("Destination must be one of: {0}".format(accepted_types))
                 else:
                     # The destination must have X and Z coordinates of the surface, Y equal to the table height
-                    table_trans = target.getField("translation").getSFVec3f()
+                    table_trans = destination.getField("translation").getSFVec3f()
                     # Get the height of the table (Y)
-                    table_size = target.getField("size").getSFVec3f()
+                    table_size = destination.getField("size").getSFVec3f()
                     table_height = table_size[1]
                     # Calculate the new position and assign it
                     final_position = [table_trans[0], table_height, table_trans[2]]
-
+                    self.busy_waiting(2, label="PLACE", target=target_name)     # wait
+                    self.update_training_label("PLACE")
+                    self.update_training_target(target_name)
                     self.object_in_hand.getField("translation").setSFVec3f(final_position)
                     print("Deposited the {0} in {1}".format(self.object_in_hand.getTypeName(), final_position))
                     # Free the hand and reset the stance
                     self.object_in_hand = None
                     object_held_field: Field = self.supervisor.getSelf().getField("heldObjectReference")
                     object_held_field.setSFInt32(0)
-                    self.busy_waiting(1, label="PLACE")
+                    self.busy_waiting(1, label="PLACE", target=target_name) # wait
                     self.neutral_position()
                     return True
         else:
@@ -502,7 +512,7 @@ class HumanAgent(Agent):
         #return t, r
         return hand_position, r
 
-    def busy_waiting(self, duration, label="STILL", debug=False):
+    def busy_waiting(self, duration, label="STILL", target="", debug=False):
         """
         Busy waiting, for a specified duration or infinitely.
         Overloaded method from Agent, in which the hand-held object's physics is resetted (not perfectly).
@@ -514,7 +524,7 @@ class HumanAgent(Agent):
         """
         assert duration > 0 or duration == -1, "Duration has to be greater than 0, or exactly -1 for infinite waiting."
         self.update_training_label(label)
-        self.update_training_target("")
+        self.update_training_target(target)
         if debug:
             print("{0} has gone asleep.".format(self.__class__.__name__))
         start = self.supervisor.getTime()
@@ -531,15 +541,18 @@ class HumanAgent(Agent):
         if debug:
             print("{0} has awoken.".format(self.__class__.__name__))
 
-    def update_training_label(self, label=""):
+    def update_training_label(self, label="", visualize=True):
         """
         Updates the training task label.
 
         :param label: str, defaults to empty
+        :param visualize: if True, prints a label on the Webots 3d view
         :return: None
         """
         label_field: Field = self.supervisor.getSelf().getField("trainingTaskLabel")
         label_field.setSFString(label)
+        if visualize:
+            self.supervisor.setLabel(0, label, 0.1, 0.5, 0.1, 0xFF0000, 0, "Impact")
 
     def update_training_target(self, label=""):
         """
@@ -564,11 +577,11 @@ while human.step():
     human.walk_simplified((4.38679, -4.8212), speed=0.2)
     human.walk_simplified((4.4642, -1.04344), speed=0.2)
     """
-    human.busy_waiting(1, label="STILL")
+    human.busy_waiting(2, label="STILL")
     if human.approach_target("coca-cola", speed, debug):
         human.grasp_object("coca-cola")
         if human.approach_target("table(1)", speed, debug):
             human.release_object("table(1)")
-            human.walk_simplified((0, 0), speed, debug)
+            #human.walk_simplified((0, 0), speed, debug)
             human.busy_waiting(-1, label="STILL")
     break

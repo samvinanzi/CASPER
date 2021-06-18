@@ -15,7 +15,7 @@ import os
 from qsrlib.qsrlib import QSRlib, QSRlib_Request_Message
 from qsrlib_io.world_trace import Object_State, World_Trace
 import qsrlib_qstag.utils as qsr_utils
-from Dataframe import *
+from Episode import *
 
 BASEDIR = "..\..\..\..\THRIVE++"
 PICKLE_DIR = "data\pickle"
@@ -150,6 +150,9 @@ class RobotAgent(Agent):
                         # Training target
                         training_target_field: Field = node.getField("trainingTaskTarget")
                         training_target = training_target_field.getSFString()
+                        # Adjustment for PICK action
+                        if training_label == "PICK":
+                            hold = False
                     else:
                         hold = None
                         training_label = None
@@ -328,7 +331,7 @@ class RobotAgent(Agent):
             },
             "mos": {
                 "qsr_for": ["human"],
-                "quantisation_factor": 0.0
+                "quantisation_factor": 0.09
             }
         }
         qsrlib_request_message = QSRlib_Request_Message(which_qsr, self.world_trace, dynamic_args=dynamic_args)
@@ -393,7 +396,7 @@ while robot.step():
     if robot.is_camera_active():
         if robot.search_for("pedestrian"):
             robot.track_target("pedestrian")
-            if robot.supervisor.getTime() > 35:
+            if robot.supervisor.getTime() > 38:
                 qsr_response = robot.compute_qsr_test()
                 pickle.dump(qsr_response, open(os.path.join(BASEDIR, "data\pickle\qsr_response.p"), "wb"))
                 pickle.dump(robot.world_trace, open(os.path.join(BASEDIR, "data\pickle\world_trace.p"), "wb"))

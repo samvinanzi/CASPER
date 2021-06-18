@@ -2,7 +2,7 @@
 Models the robot's belief on the human's focus.
 """
 
-from Dataframe import ObjectFrame
+from Episode import ObjectFrame
 
 
 class FocusBelief:

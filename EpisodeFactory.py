@@ -4,10 +4,14 @@ This class handles the construction of Episodes
 
 import os
 import pickle
-
-from Dataframe import *
+import numpy as np
+import csv
+import pandas as pd
+from sklearn.preprocessing import LabelEncoder
+from Episode import *
 
 PICKLE_DIR = "data\pickle"
+CSV_DIR = "data\csv"
 
 
 class DataFrameFactory:
@@ -65,11 +69,12 @@ class DataFrameFactory:
             human_trace = trace_at_timestep.qsrs['human']
             # Initialize a human frame for the current timestamp
             hf = HumanFrame('human')
-            hf.MOS = human_trace.qsr['mos']
+            hf.MOS = human_trace.qsr['mos'].upper()
             hf.HOLD = self.world_trace.trace[current_timestamp].objects['human'].kwargs['hold']
             label = self.world_trace.trace[current_timestamp].objects['human'].kwargs['label']
             target = self.world_trace.trace[current_timestamp].objects['human'].kwargs['target']
-            if target is None:
+            hf.target = target
+            if target is None or target == '':
                 hf.fallback_label = label
             # Find the objects with which the humans has a spatial relation
             keys = trace_at_timestep.qsrs.keys()
@@ -122,3 +127,75 @@ class DataFrameFactory:
                 print(episode)
             except AttributeError:
                 pass
+
+    def build_dataset(self, save=False):
+        """
+        Builds a training/testing dataset for ML applications.
+
+        :param save: optional parameter, if true it will save the data in both pickle and CSV
+        :return: A 5xM matrix, where M is the number of recorded episodes.
+        """
+        dataset = []
+        for episode in self.episodes:
+            dataset.append(episode.to_feature('human'))
+        if save:
+            # Pickle
+            pickle.dump(dataset, open(os.path.join(PICKLE_DIR, "dataset.p"), "wb"))
+
+            # CSV
+            with open(os.path.join(CSV_DIR, "dataset.csv"), 'w', encoding='UTF8', newline='') as f:
+                writer = csv.writer(f)
+                # Write the header
+                writer.writerow(['TIME', 'MOS', 'HOLD', 'QDC', 'QTC', 'ACTION'])
+                for row in dataset:
+                    writer.writerow(row)
+
+            print("Dataset saved (pickle/CSV) in {0}".format(PICKLE_DIR))
+        return np.array(dataset)
+
+    def load_training_dataset(self, filename):
+        file = os.path.join(CSV_DIR, filename)
+        if not os.path.exists(file) or not os.path.isfile(file):
+            print("Error trying to access data in {0}".format(file))
+        else:
+            dtypes = {
+                'TIME': int,
+                'MOS': bool,
+                'HOLD': bool,
+                'QDC': 'category',
+                'QTC': 'category',
+                'ACTION': str
+            }
+            df = pd.read_csv(file, dtype=dtypes)
+
+            qdc_mapping = {
+                'TOUCH': 1,
+                'NEAR': 2,
+                'MEDIUM': 3,
+                'FAR': 4,
+                'IGNORE': 5
+            }
+            #inverse_qdc_mapping = {v: k for k, v in qdc_mapping.items()}
+
+            qtc_mapping = {
+                '0': 1,
+                '-': 2,
+                '+': 3,
+                'IGNORE': 4
+            }
+            #inverse_qtc_mapping = {v: k for k, v in qtc_mapping.items()}
+
+            #class_mapping = {label: idx for idx, label in enumerate(np.unique(df['ACTION']))}
+            #inverse_class_mapping = {v: k for k, v in class_mapping.items()}
+
+            df['QDC'] = df['QDC'].map(qdc_mapping)
+            df['QTC'] = df['QTC'].map(qtc_mapping)
+
+            le = LabelEncoder()
+            y = le.fit_transform(df['ACTION'].values)
+            class_names = le.inverse_transform(y)
+
+            df.drop('TIME', axis=1, inplace=True)
+            df.drop('ACTION', axis=1, inplace=True)
+
+            return df.to_numpy(), y

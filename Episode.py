@@ -27,12 +27,27 @@ class Episode:
             else:
                 return None
 
+    def to_feature(self, human):
+        """
+        Returns a feature vector for a specific human, if found.
+
+        :param human: str, name of the human.
+        :return: 1x5 feature array, or None if not found.
+        """
+        try:
+            hf = self.humans[human]
+            feature = hf.to_feature()
+            feature.insert(0, self.time)
+            return feature
+        except KeyError:
+            return None
+
     def __str__(self):
         return "{0}: {1}".format(self.time, self.humans['human'].get_label())
 
 
 class HumanFrame:
-    def __init__(self, name, mos='s', hold=False, objects=None, fallback_label=None):
+    def __init__(self, name, mos='s', hold=False, objects=None, target=None, fallback_label=None):
         if objects is None:
             objects = {}
         # Sanity checks
@@ -43,6 +58,7 @@ class HumanFrame:
         self.MOS = mos.upper()
         self.HOLD = hold
         self.objects = objects
+        self.target = target
         self.fallback_label = fallback_label
 
     def is_stationary(self):
@@ -86,11 +102,13 @@ class HumanFrame:
 
         :return: 1x5 feature vector [MOS, HOLD, QDC, QTC, LABEL]
         """
+        mos = True if self.MOS == 'M' else False
+        hold = bool(self.HOLD)
         ooi = self.get_object_of_interest()
         if ooi is None:
-            return [self.MOS, self.HOLD, None, None, self.fallback_label]
+            return [mos, hold, 'IGNORE', 'IGNORE', self.fallback_label]
         else:
-            return [self.MOS, self.HOLD, ooi.QDC, ooi.QTC, ooi.label]
+            return [mos, hold, ooi.QDC, ooi.QTC, ooi.label]
 
     def get_label(self):
         """
