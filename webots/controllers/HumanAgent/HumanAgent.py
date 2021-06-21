@@ -577,7 +577,7 @@ while human.step():
     human.walk_simplified((4.38679, -4.8212), speed=0.2)
     human.walk_simplified((4.4642, -1.04344), speed=0.2)
     """
-    human.busy_waiting(2, label="STILL")
+    human.busy_waiting(3, label="STILL")
     if human.approach_target("coca-cola", speed, debug):
         human.grasp_object("coca-cola")
         if human.approach_target("table(1)", speed, debug):

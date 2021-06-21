@@ -14,11 +14,19 @@ PICKLE_DIR = "data\pickle"
 CSV_DIR = "data\csv"
 
 
-class DataFrameFactory:
+class EpisodeFactory:
     def __init__(self, world_trace=None, qsr_response=None):
         self.world_trace = world_trace
         self.qsr_response = qsr_response
         self.episodes = []
+        self.dtypes = {
+                'TIME': int,
+                'MOS': bool,
+                'HOLD': bool,
+                'QDC': 'category',
+                'QTC': 'category',
+                'ACTION': str
+            }
 
     @staticmethod
     def load_pickle(filename):
@@ -36,14 +44,14 @@ class DataFrameFactory:
             print("Invalid filename: {0}".format(file))
             quit(-1)
 
-    def reload_data(self):
+    def reload_data(self, id=0):
         """
         Realoads previously saved data.
 
         :return: None
         """
-        self.world_trace = self.load_pickle('world_trace.p')
-        self.qsr_response = self.load_pickle('qsr_response.p')
+        self.world_trace = self.load_pickle('world_trace{0}.p'.format(id))
+        self.qsr_response = self.load_pickle('qsr_response{0}.p'.format(id))
 
     def build_episode(self, current_timestamp=1, debug=True):
         """
@@ -128,7 +136,7 @@ class DataFrameFactory:
             except AttributeError:
                 pass
 
-    def build_dataset(self, save=False):
+    def build_dataset(self, save=False, id=0):
         """
         Builds a training/testing dataset for ML applications.
 
@@ -140,10 +148,10 @@ class DataFrameFactory:
             dataset.append(episode.to_feature('human'))
         if save:
             # Pickle
-            pickle.dump(dataset, open(os.path.join(PICKLE_DIR, "dataset.p"), "wb"))
+            pickle.dump(dataset, open(os.path.join(PICKLE_DIR, "dataset{0}.p".format(id)), "wb"))
 
             # CSV
-            with open(os.path.join(CSV_DIR, "dataset.csv"), 'w', encoding='UTF8', newline='') as f:
+            with open(os.path.join(CSV_DIR, "dataset{0}.csv".format(id)), 'w', encoding='UTF8', newline='') as f:
                 writer = csv.writer(f)
                 # Write the header
                 writer.writerow(['TIME', 'MOS', 'HOLD', 'QDC', 'QTC', 'ACTION'])
@@ -158,15 +166,7 @@ class DataFrameFactory:
         if not os.path.exists(file) or not os.path.isfile(file):
             print("Error trying to access data in {0}".format(file))
         else:
-            dtypes = {
-                'TIME': int,
-                'MOS': bool,
-                'HOLD': bool,
-                'QDC': 'category',
-                'QTC': 'category',
-                'ACTION': str
-            }
-            df = pd.read_csv(file, dtype=dtypes)
+            df = pd.read_csv(file, dtype=self.dtypes)
 
             qdc_mapping = {
                 'TOUCH': 1,
@@ -199,3 +199,29 @@ class DataFrameFactory:
             df.drop('ACTION', axis=1, inplace=True)
 
             return df.to_numpy(), y
+
+    def clean_dataset(self, id=0):
+        """
+        Reads a csv dataset, cleans the data for training and saves it in another CSV file.
+
+        :param id: dataset id
+        :return: None
+        """
+        filename = os.path.join(CSV_DIR, 'dataset{0}.csv'.format(id))
+        if not os.path.exists(filename) or not os.path.isfile(filename):
+            print("{0} is not a valid csv filename".format(filename))
+        else:
+            df = pd.read_csv(filename, dtype=self.dtypes)
+            for index, row in df.iterrows():
+                action = row['ACTION']
+                if action == 'STILL':
+                    df.loc[index, 'MOS'] = False
+                if action == 'WALK':
+                    df.loc[index, 'MOS'] = True
+                if action == 'PICK':
+                    df.loc[index, 'MOS'] = False
+                if action == 'PLACE':
+                    df.loc[index, 'MOS'] = False
+                if action == 'TRANSPORT':
+                    df.loc[index, 'MOS'] = True
+            df.to_csv(os.path.join(CSV_DIR, 'dataset{0}_clean.csv'.format(id)), index=False)

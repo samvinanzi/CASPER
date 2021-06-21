@@ -390,16 +390,19 @@ class RobotAgent(Agent):
 robot = RobotAgent()
 tracked_objects = ['can', 'pedestrian']
 
+i = "0"
+
 # Perform simulation steps until Webots is stopping the controller
-#robot.motion("neutral")
+robot.motion("neutral")
 while robot.step():
     if robot.is_camera_active():
         if robot.search_for("pedestrian"):
             robot.track_target("pedestrian")
-            if robot.supervisor.getTime() > 38:
+            if robot.supervisor.getTime() >= 40:
                 qsr_response = robot.compute_qsr_test()
-                pickle.dump(qsr_response, open(os.path.join(BASEDIR, "data\pickle\qsr_response.p"), "wb"))
-                pickle.dump(robot.world_trace, open(os.path.join(BASEDIR, "data\pickle\world_trace.p"), "wb"))
+                pickle.dump(qsr_response, open(os.path.join(BASEDIR, "data\pickle\qsr_response{0}.p".format(i)), "wb"))
+                pickle.dump(robot.world_trace, open(os.path.join(BASEDIR, "data\pickle\world_trace{0}.p".format(i)), "wb"))
+                print("Saved")
                 break
         else:
             print("I didn't find the human!")

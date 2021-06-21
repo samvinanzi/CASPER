@@ -6,10 +6,52 @@ from sklearn.tree import DecisionTreeClassifier, export_text
 from sklearn import tree
 from matplotlib import pyplot as plt
 
-from EpisodeFactory import DataFrameFactory
+from EpisodeFactory import EpisodeFactory
 from FocusBelief import FocusBelief
+from TreeTrainer import TreeTrainer
 
 """
+# Preparing all datasets
+for i in range(10):
+    print("Operation in progress: {0}".format(i))
+    factory = DataFrameFactory()
+    factory.reload_data(id=i)
+    for j in range(41):
+        factory.build_episode(j)
+    factory.build_dataset(save=True, id=i)
+    print("Built...")
+    factory.clean_dataset(id=i)
+    print("Cleaned...")
+"""
+
+'''
+# Combining the datasets
+CSV_DIR = "data\csv"
+filenames = []
+for i in range(10):
+    filenames.append(os.path.join(CSV_DIR, "dataset{0}_clean.csv".format(i)))
+#combine all files in the list
+combined_csv = pd.concat([pd.read_csv(f) for f in filenames])
+#export to csv
+combined_csv.to_csv(os.path.join(CSV_DIR, "all.csv"), index=False, encoding='utf-8-sig')
+'''
+
+'''
+# Creates the K-folds
+CSV_DIR = "data\csv"
+for k in range(10):
+    filenames = []
+    ids = [x for x in range(10) if x != k]
+    for i in ids:
+        filenames.append(os.path.join(CSV_DIR, "dataset{0}_clean.csv".format(i)))
+    # combine all files in the list
+    combined_csv = pd.concat([pd.read_csv(f) for f in filenames])
+    # export to csv
+    combined_csv.to_csv(os.path.join(CSV_DIR, "kfold_exclude{0}.csv".format(k)), index=False, encoding='utf-8-sig')
+    print("K = {0}, files = {1}".format(k, filenames))
+'''
+
+'''
 factory = DataFrameFactory()
 factory.reload_data()
 focus = FocusBelief('human')
@@ -76,8 +118,8 @@ df.drop('ACTION', axis=1, inplace=True)
 
 print(df.to_string())
 print(y)
-"""
-
+'''
+'''
 factory = DataFrameFactory()
 X_train, y_train = factory.load_training_dataset('dataset_clean.csv')
 
@@ -86,5 +128,12 @@ clf.fit(X_train, y_train)
 tree.plot_tree(clf, feature_names=['MOS', 'HOLD', 'QDC', 'QTC'], filled=True,
                class_names=['PICK', 'PLACE', 'STILL', 'TRANSPORT', 'WALK'])
 plt.show()
+'''
+
+
+
+trainer = TreeTrainer()
+#trainer.k_fold_cross_validation()
+trainer.train_model('all.csv', show=True)
 
 pass
