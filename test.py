@@ -132,8 +132,158 @@ plt.show()
 
 
 
-trainer = TreeTrainer()
+#trainer = TreeTrainer()
 #trainer.k_fold_cross_validation()
-trainer.train_model('all.csv', show=True)
+#trainer.train_model('all.csv', show=True)
 
+
+"""
+from hmmlearn.hmm import MultinomialHMM
+
+hmm = MultinomialHMM(n_components=3, params='e')
+
+observation_map = {
+    'STILL': 0,
+    'WALK': 1,
+    'PICK': 2,
+    'PLACE': 3,
+    'TRANSPORT': 4
+}
+
+hmm.startprob_ = np.array([.33, .33, .33])
+hmm.transmat_ = np.array([
+    [.33, .33, .33],
+    [.33, .33, .33],
+    [.33, .33, .33]
+])
+hmm.emissionprob_ = np.array([
+    [0, 0, ],
+    [],
+    []
+])
+
+X1 = ['PICK', 'TRANSPORT', 'PLACE']
+X2 = ['PICK', 'PLACE', 'PICK', 'PLACE']
+X3 = ['STILL', 'WALK', 'STILL','STILL']
+
+X = np.concatenate([X1, X2, X3])
+X = [[observation_map[x]] for x in X]
+lengths = [len(X1), len(X2), len(X3)]
+
+hmm.fit(X, lengths)
+
+Y1 = [[observation_map[x]] for x in X1]
+Y2 = [[observation_map[x]] for x in X2]
+Y3 = [[observation_map[x]] for x in X3]
+
+print("0: Pick&Place\n1: Use\n3) Relocate")
+
+print(hmm.predict(Y1))
+print(hmm.predict(Y2))
+print(hmm.predict(Y3))
+"""
+
+
+#from random import random
+#from graphviz import Digraph
+
+#from MarkovFSM import Chain, transitions_to_graph
+
+'''
+def coin():               # random process: the perfect coin flipping
+  return 1 if random() > 0.5 else 0
+
+chain = Chain(2, coin())  # create an empty Markov chain with 2 states
+
+for i in range(1000000):  # let the Markov chain build state transition matrix
+  chain.learn(coin())   # based on 1000000 of coin flips
+
+print(chain.get_transitions_probs(0))
+'''
+
+
+action1 = [
+    [0, .033, .033, .9, .033],
+    [.1, 0, 0, .9, 0],
+    [.1, 0, 0, 0, .9],
+    [.05, 0, .9, 0, .05],
+    [.033, .033, 0, .9, .033]
+]
+
+action2 = [
+    [0, .05, .05, .45, .45],
+    [.1, 0, 0, .9, 0],
+    [.1, 0, 0, 0, .9],
+    [.05, 0, .05, 0, .9],
+    [.05, .05, 0, .9, 0]
+]
+
+action3 = [
+    [0, .9, .033, .033, .033],
+    [.9, 0, 0, .1, 0],
+    [.9, 0, 0, 0, .1],
+    [.9, 0, .05, .0, .05],
+    [.9, .05, 0, .05, 0]
+]
+
+def get_prob(model, *args):
+    ret = 1
+    for i, j in zip(args, args[1:]):
+        ret *= model.at[i, j]
+    return ret
+
+names = ['STILL', 'WALK', 'TRANSPORT', 'PICK', 'PLACE']
+
+chain1 = pd.DataFrame(action1, columns=names, index=names, dtype=float)
+chain2 = pd.DataFrame(action2, columns=names, index=names, dtype=float)
+chain3 = pd.DataFrame(action3, columns=names, index=names, dtype=float)
+
+class Model:
+    def __init__(self, chain, name):
+        self.chain = chain
+        self.name = name
+
+m1 = Model(chain1, "Pick&Place")
+m2 = Model(chain2, "Use")
+m3 = Model(chain3, "Relocate")
+
+def best_model(*args):
+    top_score = 0.0
+    top_model = None
+    for model in [m1, m2, m3]:
+        score = get_prob(model.chain, *args)
+        if score > top_score:
+            top_score = score
+            top_model = model.name
+    return top_model, top_score
+
+#print(get_prob(m1.chain, 'PICK', 'TRANSPORT', 'PLACE'))
+#print(get_prob(m1.chain, 'PICK', 'PLACE', 'PICK', 'PLACE'))
+#print(get_prob(m1.chain, 'STILL', 'WALK', 'STILL'))
+
+print(best_model('PICK', 'TRANSPORT', 'PLACE'))
+print(best_model('PICK', 'PLACE', 'PICK', 'PLACE'))
+print(best_model('STILL', 'WALK', 'STILL'))
+
+print("\n")
+
+print(best_model('PICK', 'PLACE', 'PICK', 'PLACE', 'PICK', 'PLACE'))
+
+
+'''
+transmat = [
+    [0.3, 0.2, 0.5, 0.0, 0.2],
+    [0.2, 0.4, 0, 0, 0.4],
+    [0.5, 0.4, 0, 0.1, 0],
+    [0.2, 0.2, 0.2, 0.2, 0.2],
+    [0.6, 0.1, 0.1, 0.1, 0.1]
+]
+
+markov = pd.DataFrame(transmat, columns=['A', 'B', 'C', 'D', 'E'], index=['A', 'B', 'C', 'D', 'E'], dtype=float)
+print(get_prob(markov, 'A', 'C', 'D'))
+print(get_prob(markov, 'A', 'C', 'D', 'E'))
+'''
+
+
+print("\nDone")
 pass
