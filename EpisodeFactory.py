@@ -53,7 +53,7 @@ class EpisodeFactory:
         self.world_trace = self.load_pickle('world_trace{0}.p'.format(id))
         self.qsr_response = self.load_pickle('qsr_response{0}.p'.format(id))
 
-    def build_episode(self, current_timestamp=1, debug=True):
+    def build_episode(self, current_timestamp=1, debug=False):
         """
         This method builds an episode for the current timestamp, given the world data.
 

@@ -16,6 +16,7 @@ from qsrlib.qsrlib import QSRlib, QSRlib_Request_Message
 from qsrlib_io.world_trace import Object_State, World_Trace
 import qsrlib_qstag.utils as qsr_utils
 from Episode import *
+from cognitive_architecture.CognitiveArchitecture import CognitiveArchitecture
 
 BASEDIR = "..\..\..\..\THRIVE++"
 PICKLE_DIR = "data\pickle"
@@ -37,8 +38,15 @@ class RobotAgent(Agent):
         self.world_knowledge = {}           # Coordinates of all the entities in the world at present
         self.initialize_world_knowledge()
         self.qsrlib = QSRlib()                 # Qualitative Spatial Relationship engine
-        self.world_trace = World_Trace()          # Time-series coordinates of all the entities in the world
+        #self.world_trace = World_Trace()          # Time-series coordinates of all the entities in the world
+        #self.update_world_trace()
+
+        # todo !
+        self.cognition = CognitiveArchitecture(mode="TRAIN")
+        self.cognition.start()
+        #self.world_trace = self.cognition.expose_world_trace()
         self.update_world_trace()
+        # todo !
 
         # Devices
         self.motors = {'head_1': self.supervisor.getDevice("head_1_joint"),
@@ -135,6 +143,8 @@ class RobotAgent(Agent):
         """
         current_timestep = int(self.supervisor.getTime())
         if current_timestep > self.last_timestep:
+            print("[ROBOT] Writing data for timestamp {0}".format(current_timestep))
+            new_objects = []
             for name, position in self.world_knowledge.items():
                 if position is not None:
                     # If we are dealing with a human, let's register their specific states
@@ -157,7 +167,6 @@ class RobotAgent(Agent):
                         hold = None
                         training_label = None
                         training_target = None
-                    # todo add xsize, ysize, zsize?
                     if name == "human":
                         new_os = Object_State(name=name, timestamp=current_timestep,
                                               x=position[0], y=position[2], hold=hold, label=training_label,
@@ -165,10 +174,13 @@ class RobotAgent(Agent):
                     else:
                         new_os = Object_State(name=name, timestamp=current_timestep,
                                               x=position[0], y=position[2])
-                    self.world_trace.add_object_state(new_os)
+                    #self.world_trace.add_object_state(new_os)
+                    new_objects.append(new_os)
                     if debug:
                         print("Added {0} to world trace in position [{1}, {2}, {3}] at timestamp {4}.".format(
                             new_os.name, new_os.x, new_os.y, new_os.z, new_os.timestamp))
+            # Sends the new observations to the cognitive architecture
+            self.cognition.tq.put(new_objects)
             self.last_timestep = current_timestep
 
     def get_target_coordinates(self, target_name):
@@ -398,11 +410,12 @@ while robot.step():
     if robot.is_camera_active():
         if robot.search_for("pedestrian"):
             robot.track_target("pedestrian")
-            if robot.supervisor.getTime() >= 40:
-                qsr_response = robot.compute_qsr_test()
-                pickle.dump(qsr_response, open(os.path.join(BASEDIR, "data\pickle\qsr_response{0}.p".format(i)), "wb"))
-                pickle.dump(robot.world_trace, open(os.path.join(BASEDIR, "data\pickle\world_trace{0}.p".format(i)), "wb"))
-                print("Saved")
-                break
+            #if robot.supervisor.getTime() >= 40:
+                #qsr_response = robot.compute_qsr_test()
+                #robot.cognition.lowlevel.compute_qsr(show=True)
+                #pickle.dump(qsr_response, open(os.path.join(BASEDIR, "data\pickle\qsr_response{0}.p".format(i)), "wb"))
+                #pickle.dump(robot.world_trace, open(os.path.join(BASEDIR, "data\pickle\world_trace{0}.p".format(i)), "wb"))
+                #print("Saved")
+            #    break
         else:
             print("I didn't find the human!")
