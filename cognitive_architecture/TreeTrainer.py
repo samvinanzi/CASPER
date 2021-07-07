@@ -12,7 +12,7 @@ from matplotlib import pyplot as plt
 from Episode import Episode
 from EpisodeFactory import EpisodeFactory
 
-CSV_DIR = "data\csv"
+CSV_DIR = "../data/csv"
 
 
 class TreeTrainer:

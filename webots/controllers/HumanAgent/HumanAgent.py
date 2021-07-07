@@ -541,7 +541,7 @@ class HumanAgent(Agent):
         if debug:
             print("{0} has awoken.".format(self.__class__.__name__))
 
-    def update_training_label(self, label="", visualize=True):
+    def update_training_label(self, label="", visualize=False):
         """
         Updates the training task label.
 

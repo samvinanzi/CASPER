@@ -3,13 +3,14 @@ Low-Level cognitive architecture (from QSR to contextualized actions)
 """
 import numpy as np
 
-from FocusBelief import FocusBelief
+from cognitive_architecture.FocusBelief import FocusBelief
 from qsrlib.qsrlib import QSRlib, QSRlib_Request_Message
-from qsrlib_io.world_trace import World_Trace, Object_State
+from qsrlib_io.world_trace import World_Trace
 import pickle
 import os
-from TreeTrainer import TreeTrainer
+from cognitive_architecture.TreeTrainer import TreeTrainer
 from EpisodeFactory import EpisodeFactory
+from cognitive_architecture.MarkovFSM import ensemble
 
 BASEDIR = "..\\"
 PICKLE_DIR = "data\pickle"
@@ -24,6 +25,7 @@ class LowLevel:
         self.which_qsr = ["argd", "qtcbs", "mos"]
         self.tree = None
         self.focus = FocusBelief(human_name="human")
+        self.ensemble = ensemble
 
         self.dynamic_args = {
             "argd": {
@@ -179,19 +181,32 @@ class LowLevel:
         trainer = TreeTrainer()
         return trainer.k_fold_cross_validation(min, max)
 
-    def test(self):
-        # Collect the latest observation
-        latest_timestamp = self.observe(1)
-        # Process it into a set of QSRs
-        qsr_response = self.compute_qsr()
-        # Assess the focus of the human to identify the object of interest
-        # todo
-        factory = EpisodeFactory(self.world_trace, qsr_response)
-        episode = factory.build_episode(latest_timestamp)
-        feature = episode.to_feature()
-        # Classify the set of QSRs into a Movement
-        movement = self.tree.predict(np.array(episode))
-        # Add the Movement to the markovian finite-state machine to predict a temporal Action
-        # Contextualize the Action
-        # Try to predict the overall plan
+    def test(self, debug=True):
+        while True:
+            # Collect the latest observation
+            latest_timestamp = self.observe(1)
+            # Process it into a set of QSRs
+            qsr_response = self.compute_qsr()
+            # Assess the focus of the human to identify the object of interest
+            # todo
+            factory = EpisodeFactory(self.world_trace, qsr_response)
+            episode = factory.build_episode(latest_timestamp)
+            feature = episode.to_feature()
+            # Classify the set of QSRs into a Movement
+            movement = self.tree.predict(np.array(feature))
+            if debug:
+                print("Predicted movement: {0}".format(movement))
+            # Add the Movement to the markovian finite-state machine to predict a temporal Action
+            ensemble.add_observation(movement)
+            action, score, winner = ensemble.best_model()
+            if debug:
+                print("Best action fit: {0} ({1}). Winner... {2}".format(action, score, winner))
+            if not winner:
+                continue
+            else:
+                # Contextualize the Action
+                pass    # todo
+                # Try to predict the overall plan
+            # todo
         # Collaborate
+        # todo

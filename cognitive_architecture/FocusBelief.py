@@ -25,6 +25,14 @@ class FocusBelief:
             '0': .5
         }
 
+    def get_object_names(self):
+        """
+        Returns the names of the objects already in memory.
+
+        :return: list of names
+        """
+        return list(self.raw_values.keys())
+
     def p(self, object):
         """
         Calculates the probability for a given set of object QSRs.
