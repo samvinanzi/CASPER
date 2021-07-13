@@ -2,7 +2,7 @@
 Models the robot's belief on the human's focus.
 """
 
-from Episode import ObjectFrame
+from cognitive_architecture.Episode import ObjectFrame
 
 
 class FocusBelief:

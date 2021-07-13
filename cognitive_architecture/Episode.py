@@ -27,16 +27,20 @@ class Episode:
             else:
                 return None
 
-    def to_feature(self, human):
+    def to_feature(self, human, train=True):
         """
         Returns a feature vector for a specific human, if found.
 
         :param human: str, name of the human.
+        :param train: if True, creates a training feature, otherwise a test one.
         :return: 1x5 feature array, or None if not found.
         """
         try:
             hf = self.humans[human]
-            feature = hf.to_feature()
+            if train:
+                feature = hf.to_train_feature()
+            else:
+                feature = hf.to_test_feature()
             feature.insert(0, self.time)
             return feature
         except KeyError:
@@ -96,7 +100,7 @@ class HumanFrame:
                 return object
         return None
 
-    def to_feature(self):
+    def to_train_feature(self):
         """
         Builds a feature vector out of the current episode's data.
 
@@ -109,6 +113,24 @@ class HumanFrame:
             return [mos, hold, 'IGNORE', 'IGNORE', self.fallback_label]
         else:
             return [mos, hold, ooi.QDC, ooi.QTC, ooi.label]
+
+    def to_test_feature(self):
+        """
+        Builds a (test) feature vector out of the current episode's data.
+
+        :return: 1x4 feature vector [MOS, HOLD, QDC, QTC]
+        """
+        mos = True if self.MOS == 'M' else False
+        hold = bool(self.HOLD)
+        if self.target is None:
+            return [mos, hold, 'IGNORE', 'IGNORE']
+        else:
+            try:
+                ooi = self.objects[self.target]
+                return [mos, hold, ooi.QDC, ooi.QTC]
+            except KeyError:
+                print("Invalid target '{0}', defaulting to None.".format(self.target))
+                return [mos, hold, 'IGNORE', 'IGNORE']
 
     def get_label(self):
         """

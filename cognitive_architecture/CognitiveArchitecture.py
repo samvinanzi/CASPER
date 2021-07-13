@@ -4,7 +4,7 @@ Cognitive Architecture
 
 from cognitive_architecture.LowLevel import LowLevel
 from threading import Thread
-from ObservationQueue import ObservationQueue
+from cognitive_architecture.ObservationQueue import ObservationQueue
 
 
 class CognitiveArchitecture(Thread):

@@ -9,8 +9,9 @@ from qsrlib_io.world_trace import World_Trace
 import pickle
 import os
 from cognitive_architecture.TreeTrainer import TreeTrainer
-from EpisodeFactory import EpisodeFactory
+from cognitive_architecture.EpisodeFactory import EpisodeFactory
 from cognitive_architecture.MarkovFSM import ensemble
+from cognitive_architecture.Contextualizer import Contextualizer
 
 BASEDIR = "..\\"
 PICKLE_DIR = "data\pickle"
@@ -76,11 +77,9 @@ class LowLevel:
         while True:
             observations = self.tq.get()    # Blocking call
             if observations is not None:
-                print(n)
                 for observation in observations:
                     self.world_trace.add_object_state(observation)
                     current_timestamp = int(observation.timestamp)
-                print(self.world_trace.get_sorted_timestamps())
                 n += 1
                 if n >= to_observe:
                     return current_timestamp
@@ -187,26 +186,44 @@ class LowLevel:
             latest_timestamp = self.observe(1)
             # Process it into a set of QSRs
             qsr_response = self.compute_qsr()
-            # Assess the focus of the human to identify the object of interest
-            # todo
             factory = EpisodeFactory(self.world_trace, qsr_response)
             episode = factory.build_episode(latest_timestamp)
-            feature = episode.to_feature()
-            # Classify the set of QSRs into a Movement
-            movement = self.tree.predict(np.array(feature))
-            if debug:
-                print("Predicted movement: {0}".format(movement))
-            # Add the Movement to the markovian finite-state machine to predict a temporal Action
-            ensemble.add_observation(movement)
-            action, score, winner = ensemble.best_model()
-            if debug:
-                print("Best action fit: {0} ({1}). Winner... {2}".format(action, score, winner))
-            if not winner:
-                continue
+            # Assess the focus of the human to identify the object of interest
+            objects_in_timestep = episode.get_objects_for("human")
+            for object in objects_in_timestep:
+                self.focus.add(object)
+            if not self.focus.has_confident_prediction():
+                if debug:
+                    print("No clear focus yet, observing...")
+                continue    # If no confident focus predictions were made, we need to observe more
             else:
-                # Contextualize the Action
-                pass    # todo
-                # Try to predict the overall plan
+                # We have a target: add it to the episode and generate a feature
+                target = self.focus.get_top_n_items(1)
+                target_name, target_score = list(target.items())[0]
+                if debug:
+                    print("Target identified: {0} ({1}%)".format(target_name, target_score))
+                episode.humans["human"].target = target_name
+                feature = episode.to_feature(human="human", train=False)
+                # Classify the target's set of QSRs into a Movement
+                movement = self.tree.predict(np.array(feature))
+                if debug:
+                    print("Predicted movement: {0}".format(movement))
+                # Add the Movement to the markovian finite-state machine to predict a temporal Action
+                ensemble.add_observation(movement)
+                action, score, winner = ensemble.best_model()
+                if debug:
+                    print("Best action fit: {0} ({1}). Winner... {2}".format(action, score, winner))
+                if not winner:
+                    continue    # More data is needed
+                else:
+                    ensemble.empty_observations()   # Reset the observations
+                    # Contextualize the Action
+                    contextualizer = Contextualizer()
+                    context = list(self.focus.get_top_n_items(2))[1]  # The second item of the focus is the destination
+                    ca = contextualizer.give_context(action, context)
+                    if debug:
+                        print("{0} was contextualized in {1}".format(action, ca))
+                    # Try to predict the overall plan
+                    # todo
+            # Collaborate
             # todo
-        # Collaborate
-        # todo

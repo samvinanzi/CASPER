@@ -1,6 +1,3 @@
-import numpy as np
-import pandas as pd
-
 from cognitive_architecture.FocusBelief import FocusBelief
 
 '''
@@ -17,6 +14,29 @@ plt.show()
 #trainer = TreeTrainer()
 #trainer.k_fold_cross_validation()
 #trainer.train_model('all.csv', show=True)
+
+
+from cognitive_architecture.EpisodeFactory import EpisodeFactory
+
+focus = FocusBelief(human_name="human")
+
+factory = EpisodeFactory()
+factory.reload_data(0)
+ep = factory.build_episode(15)
+objects = ep.get_objects_for("human")
+for object in objects:
+    focus.add(object)
+if focus.has_confident_prediction():
+    target = focus.get_top_n_items(1)
+    target_name, target_score = list(target.items())[0]
+print("Focus: {0}".format(target))
+ep.humans["human"].target = target_name
+feature = ep.to_feature(human="human", train=False)
+print(feature)
+
+
+context = list(focus.get_top_n_items(2))[1]
+
 
 
 

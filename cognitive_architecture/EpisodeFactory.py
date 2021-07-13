@@ -8,7 +8,7 @@ import numpy as np
 import csv
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
-from Episode import *
+from cognitive_architecture.Episode import *
 
 PICKLE_DIR = "data\pickle"
 CSV_DIR = "data\csv"
@@ -145,7 +145,7 @@ class EpisodeFactory:
         """
         dataset = []
         for episode in self.episodes:
-            dataset.append(episode.to_feature('human'))
+            dataset.append(episode.to_train_feature('human'))
         if save:
             # Pickle
             pickle.dump(dataset, open(os.path.join(PICKLE_DIR, "dataset{0}.p".format(id)), "wb"))

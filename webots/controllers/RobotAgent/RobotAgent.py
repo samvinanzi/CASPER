@@ -5,17 +5,14 @@ Derives from Agent.
 TIAGo++: https://www.cyberbotics.com/doc/guide/tiagopp?version=master
 """
 import math
-import time
 import pickle
 
 from Agent import Agent
-from controller import CameraRecognitionObject, Field, InertialUnit, Motion
-import numpy as np
+from controller import Field, InertialUnit, Motion
 import os
 from qsrlib.qsrlib import QSRlib, QSRlib_Request_Message
-from qsrlib_io.world_trace import Object_State, World_Trace
-import qsrlib_qstag.utils as qsr_utils
-from Episode import *
+from qsrlib_io.world_trace import Object_State
+from cognitive_architecture.Episode import *
 from cognitive_architecture.CognitiveArchitecture import CognitiveArchitecture
 
 BASEDIR = "..\..\..\..\THRIVE++"
@@ -143,7 +140,6 @@ class RobotAgent(Agent):
         """
         current_timestep = int(self.supervisor.getTime())
         if current_timestep > self.last_timestep:
-            print("[ROBOT] Writing data for timestamp {0}".format(current_timestep))
             new_objects = []
             for name, position in self.world_knowledge.items():
                 if position is not None:

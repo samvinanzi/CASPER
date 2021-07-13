@@ -9,8 +9,7 @@ import pandas as pd
 from sklearn.tree import DecisionTreeClassifier
 from sklearn import tree
 from matplotlib import pyplot as plt
-from Episode import Episode
-from EpisodeFactory import EpisodeFactory
+from cognitive_architecture.EpisodeFactory import EpisodeFactory
 
 CSV_DIR = "../data/csv"
 
