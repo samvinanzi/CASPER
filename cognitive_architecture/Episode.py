@@ -2,6 +2,8 @@
 These three classes model an episode.
 Episode contains a set of HumanFrames, which can interact with several ObjectFrames.
 """
+import numpy as np
+import pandas as pd
 
 
 class Episode:
@@ -39,9 +41,9 @@ class Episode:
             hf = self.humans[human]
             if train:
                 feature = hf.to_train_feature()
+                feature.insert(0, self.time)
             else:
                 feature = hf.to_test_feature()
-            feature.insert(0, self.time)
             return feature
         except KeyError:
             return None
@@ -114,23 +116,50 @@ class HumanFrame:
         else:
             return [mos, hold, ooi.QDC, ooi.QTC, ooi.label]
 
-    def to_test_feature(self):
+    def to_test_feature(self, nparray=True):
         """
         Builds a (test) feature vector out of the current episode's data.
 
+        :param nparray: if True, will return a numpy array instead of a simple list
         :return: 1x4 feature vector [MOS, HOLD, QDC, QTC]
         """
         mos = True if self.MOS == 'M' else False
         hold = bool(self.HOLD)
         if self.target is None:
-            return [mos, hold, 'IGNORE', 'IGNORE']
+            feature_list = [mos, hold, 'IGNORE', 'IGNORE']
         else:
             try:
                 ooi = self.objects[self.target]
-                return [mos, hold, ooi.QDC, ooi.QTC]
+                feature_list = [mos, hold, ooi.QDC, ooi.QTC]
             except KeyError:
                 print("Invalid target '{0}', defaulting to None.".format(self.target))
-                return [mos, hold, 'IGNORE', 'IGNORE']
+                feature_list = [mos, hold, 'IGNORE', 'IGNORE']
+        if not nparray:
+            return feature_list
+        else:
+            # Convert the feature list to a numpy array
+            qdc_mapping = {
+                'TOUCH': 1,
+                'NEAR': 2,
+                'MEDIUM': 3,
+                'FAR': 4,
+                'IGNORE': 5
+            }
+            qtc_mapping = {
+                '0': 1,
+                '-': 2,
+                '+': 3,
+                'IGNORE': 4
+            }
+            df = pd.DataFrame(
+                data={
+                    'MOS': np.array([feature_list[0]], dtype=bool),
+                    'HOLD': np.array([feature_list[1]], dtype=bool),
+                    'QDC': np.array([qdc_mapping[feature_list[2]]], dtype=int),
+                    'QTC': np.array([qtc_mapping[feature_list[3]]], dtype=int),
+                }
+            )
+            return df.to_numpy()
 
     def get_label(self):
         """

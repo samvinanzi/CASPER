@@ -88,13 +88,14 @@ class TreeTrainer:
         X_train, y_train = self.factory.load_training_dataset(trainingset)
         clf = DecisionTreeClassifier(max_leaf_nodes=5, random_state=0)
         clf.fit(X_train, y_train)
+        clf.classes_ = np.array(['PICK', 'PLACE', 'STILL', 'TRANSPORT', 'WALK'])
         if show:
+            plt.figure(figsize=(12, 12))
             tree.plot_tree(clf, feature_names=['MOS', 'HOLD', 'QDC', 'QTC'], filled=True,
-                           class_names=['PICK', 'PLACE', 'STILL', 'TRANSPORT', 'WALK'])
+                           class_names=['PICK', 'PLACE', 'STILL', 'TRANSPORT', 'WALK'], fontsize=11)
+            plt.savefig('..\\..\\images\\tree.png', dpi=100)
             plt.show()
-            return clf
-        else:
-            return clf
+        return clf
 
     def k_fold_cross_validation(self, min=0, max=9, debug=False):
         """

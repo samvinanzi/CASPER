@@ -205,7 +205,7 @@ class LowLevel:
                 episode.humans["human"].target = target_name
                 feature = episode.to_feature(human="human", train=False)
                 # Classify the target's set of QSRs into a Movement
-                movement = self.tree.predict(np.array(feature))
+                movement = self.tree.predict(feature)[0]
                 if debug:
                     print("Predicted movement: {0}".format(movement))
                 # Add the Movement to the markovian finite-state machine to predict a temporal Action

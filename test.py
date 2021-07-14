@@ -1,4 +1,10 @@
 from cognitive_architecture.FocusBelief import FocusBelief
+from cognitive_architecture.TreeTrainer import TreeTrainer
+import pickle
+import os
+import numpy as np
+from cognitive_architecture.Episode import Episode
+from cognitive_architecture.EpisodeFactory import EpisodeFactory
 
 '''
 factory = DataFrameFactory()
@@ -11,11 +17,24 @@ tree.plot_tree(clf, feature_names=['MOS', 'HOLD', 'QDC', 'QTC'], filled=True,
 plt.show()
 '''
 
-#trainer = TreeTrainer()
+'''
+trainer = TreeTrainer()
 #trainer.k_fold_cross_validation()
-#trainer.train_model('all.csv', show=True)
+tree = trainer.train_model('all.csv', show=False)
+pickle.dump(tree, open("data\\pickle\\tree.p", "wb"))
+'''
 
+tree = pickle.load(open("data\\pickle\\tree.p", "rb"))
+factory = EpisodeFactory()
+factory.reload_data(0)
+for i in range(0, 40):
+    episode = factory.build_episode(i)
+    if episode is not None:
+        feature = episode.to_feature(human="human", train=False)
+        prediction = tree.predict(feature)[0]
+        print("{0}: {1}".format(i, prediction))
 
+'''
 from cognitive_architecture.EpisodeFactory import EpisodeFactory
 
 focus = FocusBelief(human_name="human")
@@ -36,7 +55,7 @@ print(feature)
 
 
 context = list(focus.get_top_n_items(2))[1]
-
+'''
 
 
 
