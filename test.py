@@ -5,6 +5,7 @@ import os
 import numpy as np
 from cognitive_architecture.Episode import Episode
 from cognitive_architecture.EpisodeFactory import EpisodeFactory
+from cognitive_architecture.MarkovFSM import ensemble
 
 '''
 factory = DataFrameFactory()
@@ -32,7 +33,11 @@ for i in range(0, 40):
     if episode is not None:
         feature = episode.to_feature(human="human", train=False)
         prediction = tree.predict(feature)[0]
-        print("{0}: {1}".format(i, prediction))
+        ensemble.add_observation(prediction)
+        action, score, winner = ensemble.best_model()
+        print("{0}) {1} = {2}".format(i, feature, prediction))
+        if winner:
+            print("\tAction: {0}".format(action))
 
 '''
 from cognitive_architecture.EpisodeFactory import EpisodeFactory

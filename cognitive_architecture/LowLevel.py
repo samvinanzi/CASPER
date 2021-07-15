@@ -8,14 +8,15 @@ from qsrlib.qsrlib import QSRlib, QSRlib_Request_Message
 from qsrlib_io.world_trace import World_Trace
 import pickle
 import os
+from pathlib import Path
 from cognitive_architecture.TreeTrainer import TreeTrainer
 from cognitive_architecture.EpisodeFactory import EpisodeFactory
 from cognitive_architecture.MarkovFSM import ensemble
 from cognitive_architecture.Contextualizer import Contextualizer
 
-BASEDIR = "..\\"
-PICKLE_DIR = "data\pickle"
-SAVE_DIR = "data\cognition"
+BASEDIR = basedir = Path(__file__).parent.parent
+PICKLE_DIR = "data/pickle"
+SAVE_DIR = "data/cognition"
 
 
 class LowLevel:
@@ -51,18 +52,17 @@ class LowLevel:
 
         :return: None
         """
-        base_save_dir = os.path.join(BASEDIR, SAVE_DIR)
-        #pickle.dump(self.world_trace, open(os.path.join(base_save_dir, "cognition", "world_trace.p"), "wb"))
-        pickle.dump(self.tree, open(os.path.join(base_save_dir, "tree.p"), "wb"))
+        path = (BASEDIR / SAVE_DIR / "tree.p").resolve()
+        pickle.dump(self.tree, open(path, "wb"))
 
     def load(self):
         """
         Loads the cognitive architecture.
+
         :return: None
         """
-        base_save_dir = os.path.join(BASEDIR, SAVE_DIR)
-        #self.world_trace = pickle.load(open(os.path.join(base_save_dir, "world_trace.p"), "rb"))
-        self.tree = pickle.load(open(os.path.join(base_save_dir, "tree.p"), "rb"))
+        path = (BASEDIR / SAVE_DIR / "tree.p").resolve()
+        self.tree = pickle.load(open(path, "rb"))
 
     def observe(self, to_observe=float('inf')):
         """
@@ -184,46 +184,63 @@ class LowLevel:
         while True:
             # Collect the latest observation
             latest_timestamp = self.observe(1)
-            # Process it into a set of QSRs
-            qsr_response = self.compute_qsr()
-            factory = EpisodeFactory(self.world_trace, qsr_response)
-            episode = factory.build_episode(latest_timestamp)
-            # Assess the focus of the human to identify the object of interest
-            objects_in_timestep = episode.get_objects_for("human")
-            for object in objects_in_timestep:
-                self.focus.add(object)
-            if not self.focus.has_confident_prediction():
+            if debug:
+                print("#----------- TIME {0} -----------#".format(latest_timestamp))
+            # QSRs can be computed only if there are at least 2 timestamps in the world trace
+            if not len(self.world_trace.get_sorted_timestamps()) >= 3:      # We work with T-1 (see below)
                 if debug:
-                    print("No clear focus yet, observing...")
-                continue    # If no confident focus predictions were made, we need to observe more
+                    print("Not enought data, continuing to observe...")
+                continue
             else:
-                # We have a target: add it to the episode and generate a feature
-                target = self.focus.get_top_n_items(1)
-                target_name, target_score = list(target.items())[0]
-                if debug:
-                    print("Target identified: {0} ({1}%)".format(target_name, target_score))
-                episode.humans["human"].target = target_name
-                feature = episode.to_feature(human="human", train=False)
-                # Classify the target's set of QSRs into a Movement
-                movement = self.tree.predict(feature)[0]
-                if debug:
-                    print("Predicted movement: {0}".format(movement))
-                # Add the Movement to the markovian finite-state machine to predict a temporal Action
-                ensemble.add_observation(movement)
-                action, score, winner = ensemble.best_model()
-                if debug:
-                    print("Best action fit: {0} ({1}). Winner... {2}".format(action, score, winner))
-                if not winner:
-                    continue    # More data is needed
-                else:
-                    ensemble.empty_observations()   # Reset the observations
-                    # Contextualize the Action
-                    contextualizer = Contextualizer()
-                    context = list(self.focus.get_top_n_items(2))[1]  # The second item of the focus is the destination
-                    ca = contextualizer.give_context(action, context)
+                # Process it into a set of QSRs
+                qsr_response = self.compute_qsr()
+                factory = EpisodeFactory(self.world_trace, qsr_response)
+                # QTC is only calculated at step T-1, so we work with that one
+                episode = factory.build_episode(latest_timestamp-1)
+                print("Episode: {0}".format(episode))
+                if episode is None:
                     if debug:
-                        print("{0} was contextualized in {1}".format(action, ca))
-                    # Try to predict the overall plan
+                        print("No human found in this frame. Continuing to observe...")
+                    continue
+                else:
+                    # Assess the focus of the human to identify the object of interest
+                    objects_in_timestep = episode.get_objects_for("human")
+                    for object in objects_in_timestep:
+                        self.focus.add(object)
+                    if not self.focus.has_confident_prediction():
+                        if debug:
+                            print("No clear focus yet, observing...")
+                        continue    # If no confident focus predictions were made, we need to observe more
+                    else:
+                        # We have a target: add it to the episode and generate a feature
+                        target = self.focus.get_top_n_items(1)
+                        target_name, target_score = list(target.items())[0]
+                        if debug:
+                            print("Target identified: {0} ({1}%)".format(target_name, target_score))
+                        episode.humans["human"].target = target_name
+                        feature = episode.to_feature(human="human", train=False)
+                        # Classify the target's set of QSRs into a Movement
+                        movement = self.tree.predict(feature)[0]
+                        if debug:
+                            print("Predicted movement: {0}".format(movement))
+                        # Add the Movement to the markovian finite-state machine to predict a temporal Action
+                        ensemble.add_observation(movement)
+                        action, score, winner = ensemble.best_model()
+                        if debug:
+                            print("Best action fit: {0} ({1}). Winner... {2}".format(action, score, winner))
+                        if not winner:
+                            continue    # More data is needed
+                        else:
+                            #ensemble.empty_observations()   # Reset the observations
+                            # Contextualize the Action
+                            contextualizer = Contextualizer()
+                            # The second item of the focus is the destination
+                            context = list(self.focus.get_top_n_items(2))[1]
+                            ca = contextualizer.give_context(action, context)
+                            if debug:
+                                print("{0} was contextualized in {1}".format(action, ca))
+                            # Try to predict the overall plan
+                            # todo
+                            break
+                    # Collaborate
                     # todo
-            # Collaborate
-            # todo

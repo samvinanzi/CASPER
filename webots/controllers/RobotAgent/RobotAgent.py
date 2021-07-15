@@ -39,7 +39,7 @@ class RobotAgent(Agent):
         #self.update_world_trace()
 
         # todo !
-        self.cognition = CognitiveArchitecture(mode="TRAIN")
+        self.cognition = CognitiveArchitecture(mode="TEST")
         self.cognition.start()
         #self.world_trace = self.cognition.expose_world_trace()
         self.update_world_trace()

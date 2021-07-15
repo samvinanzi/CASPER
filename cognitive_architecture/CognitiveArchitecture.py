@@ -19,5 +19,6 @@ class CognitiveArchitecture(Thread):
     def run(self):
         if self.mode == "TRAIN":
             self.lowlevel.train(min=0, max=0, save_id=None)
-        else:
+        else:   # TEST
+            self.lowlevel.load()    # Reloads the trained models
             self.lowlevel.test()

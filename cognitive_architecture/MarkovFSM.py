@@ -5,6 +5,7 @@ Markovian finite-state machine for action prediction from movement primitives.
 from numpy.random import choice
 from difflib import SequenceMatcher
 import pandas as pd
+from statistics import mode
 
 
 class MarkovFSM:
@@ -44,7 +45,8 @@ class MarkovFSM:
 class EnsembleFSM:
     def __init__(self, actions, action_names, field_names, initial_probabilities):
         # No safety checks implemented, beware!
-        self.observations = []
+        self.observations = []      # Raw list with all the observations
+        self.filtered_observations = []     # Observations filtered by transition and sliding window
         self.models = []
         # Constructs the models
         for i in range(len(actions)):
@@ -52,20 +54,35 @@ class EnsembleFSM:
             model = MarkovFSM(chain, action_names[i], initial_probabilities[i])
             self.models.append(model)
 
-    def add_observation(self, observation):
+    def add_observation(self, observation, w=4, debug=True):
         """
         Adds an observation to the queue. Implements the Transition Analysis to filter out repetitions.
 
         :param observation: string, must be one of action_names
+        :param w: sliding window size
+        :param debug: if True, enables verbose debug output
         :return: None
         """
-        assert not isinstance(list, observation), "Observation must be a single item, not a list."
+        assert not isinstance(observation, list), "Observation must be a single item, not a list."
+        assert isinstance(w, int) and w > 0, "The sliding window size w must be a positive integer."
         states = list(self.models[0].chain)
-        if observation in states:
-            if len(self.observations) == 0 or self.observations[-1] != observation:
-                self.observations.append(observation)
+        if observation not in states:
+            print("[ERROR] Observation '{0}' does not match the ensemble state names!".format(observation))
         else:
-            print("[ERROR] Observation {0} does not match the ensemble state names!".format(observation))
+            self.observations.append(observation)
+            #if debug:
+                #print("[DEBUG] Raw observations: {0}".format(self.observations))
+            # If at least W observations are present, apply the sliding window
+            if len(self.observations) >= w:
+                window = self.observations[-w:]
+                filtered_observation = mode(window)
+                print("Window: {0}\nFiltered: {1}".format(window, filtered_observation))
+                # filtered_observation = max(multimode(window))     # Selects the last, instead of the first winner
+                # Transition filtering
+                if len(self.filtered_observations) == 0 or self.filtered_observations[-1] != filtered_observation:
+                    self.filtered_observations.append(filtered_observation)
+            if debug:
+                print("[DEBUG] Filtered observations: {0}".format(self.filtered_observations))
 
     def empty_observations(self):
         """
@@ -74,6 +91,7 @@ class EnsembleFSM:
         :return: None
         """
         self.observations = []
+        self.filtered_observations = []
 
     def best_model(self):
         """
@@ -91,13 +109,13 @@ class EnsembleFSM:
                 output += word[0]
             return output
 
-        input_size = len(self.observations)
+        input_size = len(self.filtered_observations)
         top_score = -1.0
         top_model = None
         tie = False
         for model in self.models:
             sample = model.sample(size=input_size)
-            score = similar(refactor(self.observations), refactor(sample))
+            score = similar(refactor(self.filtered_observations), refactor(sample))
             if score >= top_score:
                 if score == top_score:  # There is a tie, register both names
                     if not isinstance(top_model, list):
