@@ -13,8 +13,11 @@ from maps.Kitchen import Kitchen
 
 
 class HumanAgent(Agent):
-    def __init__(self, debug=False):
+    def __init__(self, mode="TRAIN", debug=False):
         Agent.__init__(self, debug=debug)
+
+        assert mode.upper() == "TRAIN" or mode.upper() == "TEST", "mode must be TEST or TRAIN."
+        self.mode = mode
 
         self.object_in_hand: Node = None
         #self.object_in_hand_physics: Node = None   todo investigate this later, maybe
@@ -378,6 +381,9 @@ class HumanAgent(Agent):
             #self.step()
             #break
 
+    def is_trainingmode(self):
+        return True if self.mode == "TRAIN" else False
+
     def grasp_object(self, target_name : str):
         """
         Positions the human in a grasping pose, then attaches the object (specified by its name) to the hand. Warning:
@@ -399,7 +405,8 @@ class HumanAgent(Agent):
             object_rotation = self.object_in_hand.getField("rotation").getSFRotation()
             # Maintain the object's angle
             hand_rotation[-1] = object_rotation[-1]
-            self.busy_waiting(2, label="PICK", target=target_name)    # wait
+            if self.is_trainingmode():
+                self.busy_waiting(2, label="PICK", target=target_name)    # wait
             self.update_training_label("PICK")
             self.update_training_target(target_name)
             while self.step():
@@ -407,7 +414,8 @@ class HumanAgent(Agent):
                 self.object_in_hand.getField("rotation").setSFRotation(hand_rotation)
                 break
             self.step()
-            self.busy_waiting(1, label="PICK", target=target_name)  # wait
+            if self.is_trainingmode():
+                self.busy_waiting(1, label="PICK", target=target_name)  # wait
             return True
         return False
 
@@ -434,7 +442,8 @@ class HumanAgent(Agent):
                     table_height = table_size[1]
                     # Calculate the new position and assign it
                     final_position = [table_trans[0], table_height, table_trans[2]]
-                    self.busy_waiting(2, label="PLACE", target=target_name)     # wait
+                    if self.is_trainingmode():
+                        self.busy_waiting(2, label="PLACE", target=target_name)     # wait
                     self.update_training_label("PLACE")
                     self.update_training_target(target_name)
                     self.object_in_hand.getField("translation").setSFVec3f(final_position)
@@ -443,7 +452,8 @@ class HumanAgent(Agent):
                     self.object_in_hand = None
                     object_held_field: Field = self.supervisor.getSelf().getField("heldObjectReference")
                     object_held_field.setSFInt32(0)
-                    self.busy_waiting(1, label="PLACE", target=target_name) # wait
+                    if self.is_trainingmode():
+                        self.busy_waiting(1, label="PLACE", target=target_name) # wait
                     self.neutral_position()
                     return True
         else:

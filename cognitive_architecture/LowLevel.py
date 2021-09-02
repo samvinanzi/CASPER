@@ -189,7 +189,7 @@ class LowLevel:
             # QSRs can be computed only if there are at least 2 timestamps in the world trace
             if not len(self.world_trace.get_sorted_timestamps()) >= 3:      # We work with T-1 (see below)
                 if debug:
-                    print("Not enought data, continuing to observe...")
+                    print("Not enough data, continuing to observe...")
                 continue
             else:
                 # Process it into a set of QSRs

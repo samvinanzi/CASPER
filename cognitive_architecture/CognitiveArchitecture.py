@@ -3,8 +3,12 @@ Cognitive Architecture
 """
 
 from cognitive_architecture.LowLevel import LowLevel
+from cognitive_architecture.HighLevel import HighLevel
 from threading import Thread
 from cognitive_architecture.ObservationQueue import ObservationQueue
+
+DOMAIN_FILE = "data/CRADLE/Domain_kitchen.xml"
+OBSERVATION_FILE = "data/CRADLE/Observations_kitchen.xml"   # todo change to dynamically generated XML file
 
 
 class CognitiveArchitecture(Thread):
@@ -14,7 +18,10 @@ class CognitiveArchitecture(Thread):
         Thread.__init__(self)
         self.tq = ObservationQueue()
         self.lowlevel = LowLevel(self.tq)
-        self.highlevel = None
+        self.highlevel = HighLevel()
+
+    def is_trainingmode(self):
+        return True if self.mode == "TRAIN" else False
 
     def run(self):
         if self.mode == "TRAIN":

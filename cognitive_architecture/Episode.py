@@ -49,7 +49,10 @@ class Episode:
             return None
 
     def __str__(self):
-        return "{0}: {1}".format(self.time, self.humans['human'].get_label())
+        #return "{0}: {1}".format(self.time, self.humans['human'].get_label())
+        #return "{0}: {1}".format(self.time, self.humans['human'].to_test_feature())
+        hf = self.humans['human']
+        return "Episode at time {0} [target {1}]: {2}".format(self.time, hf.target, hf)
 
 
 class HumanFrame:
@@ -172,6 +175,13 @@ class HumanFrame:
             return object_of_interest.label
         else:
             return self.fallback_label
+
+    def __str__(self):
+        if self.target:
+            of = self.objects[self.target]
+            return "[MOS: {0}, HOLD: {1}, QDC: {2}, QTC: {2}]".format(self.MOS, self.HOLD, of.QDC, of.QTC)
+        else:
+            return "[MOS: {0}, HOLD: {1}, QDC: unknown, QTC: unknown]".format(self.MOS, self.HOLD)
 
 
 class ObjectFrame:

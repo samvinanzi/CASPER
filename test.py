@@ -6,6 +6,7 @@ import numpy as np
 from cognitive_architecture.Episode import Episode
 from cognitive_architecture.EpisodeFactory import EpisodeFactory
 from cognitive_architecture.MarkovFSM import ensemble
+from cognitive_architecture.HighLevel import HighLevel
 
 '''
 factory = DataFrameFactory()
@@ -25,6 +26,7 @@ tree = trainer.train_model('all.csv', show=False)
 pickle.dump(tree, open("data\\pickle\\tree.p", "wb"))
 '''
 
+'''
 tree = pickle.load(open("data\\pickle\\tree.p", "rb"))
 factory = EpisodeFactory()
 factory.reload_data(0)
@@ -38,6 +40,7 @@ for i in range(0, 40):
         print("{0}) {1} = {2}".format(i, feature, prediction))
         if winner:
             print("\tAction: {0}".format(action))
+'''
 
 '''
 from cognitive_architecture.EpisodeFactory import EpisodeFactory
@@ -62,6 +65,9 @@ print(feature)
 context = list(focus.get_top_n_items(2))[1]
 '''
 
+
+hl = HighLevel('Domain_kitchen.xml', 'Observations_kitchen.xml', True)
+hl.explain(debug=True)
 
 
 print("\nDone")
