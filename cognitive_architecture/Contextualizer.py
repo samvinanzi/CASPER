@@ -9,7 +9,8 @@ class Contextualizer:
             'USE': {
                 'SINK': 'WASH',
                 'HOB': 'COOK',
-                'PLATE': 'EAT'
+                'PLATE': 'EAT',
+                'GLASS': 'SIP'
             }
         }
 

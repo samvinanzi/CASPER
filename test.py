@@ -7,6 +7,7 @@ from cognitive_architecture.Episode import Episode
 from cognitive_architecture.EpisodeFactory import EpisodeFactory
 from cognitive_architecture.MarkovFSM import ensemble
 from cognitive_architecture.HighLevel import HighLevel
+from cognitive_architecture.Bridge import Bridge
 
 '''
 factory = DataFrameFactory()
@@ -66,7 +67,15 @@ context = list(focus.get_top_n_items(2))[1]
 '''
 
 
-hl = HighLevel('Domain_kitchen.xml', 'Observations_kitchen.xml', True)
+
+
+bridge = Bridge()
+data = bridge.retrieve_data("pick and place")
+bridge.append_observation(data, ['biscuits', 'plate'])
+data = bridge.retrieve_data("eat")
+bridge.append_observation(data, ['biscuits'])
+
+hl = HighLevel('Domain_kitchen.xml', 'Observations.xml', True)
 hl.explain(debug=True)
 
 
