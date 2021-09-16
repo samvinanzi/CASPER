@@ -7,25 +7,31 @@ import copy
 import sys
 import xml.etree.ElementTree as ET
 import os
-
+from cognitive_architecture.StopThread import StopThread
 from CRADLE.Algorithm import ExplainAndCompute
 from CRADLE.Sigma import Sigma, NT
 from CRADLE.Rule import Rule
 import CRADLE.PL as PL
 import CRADLE.Explanation as Explanation
+from cognitive_architecture.InternalComms import InternalComms
+import random
 
 DATA_DIR = "data/CRADLE"
+OBSERVATIONS_FILE = "Observations.xml"
 
 
-class HighLevel:
-    def __init__(self, domain_file, observation_file=None, debug=False):
+class HighLevel(StopThread):
+    def __init__(self, internal_comms, domain_file, observation_file=None, debug=False):
+        StopThread.__init__(self)
         # Initialization
         self.plan_library = None
         self.observations = None
+        self.internal_comms: InternalComms = internal_comms
+        self.debug = debug
         # Tries to load the domain XML file
         try:
             self.plan_library = self.readDomain(domain_file)
-            if debug:
+            if self.debug:
                 print(self.plan_library)
         except Exception as ex:
             print("Domain File Corrupt: {0}".format(ex))
@@ -33,7 +39,7 @@ class HighLevel:
         # Tries to load the observations XML file, if provided
         if observation_file is not None:
             self.use_observation_file(observation_file)
-            if debug:
+            if self.debug:
                 print(self.observations)
 
     def use_observation_file(self, observation_file):
@@ -59,8 +65,7 @@ class HighLevel:
         if debug:
             n_explanations = 0
             noFrontier = 0
-            while not len(exps) == 0:
-                exp = exps.pop()
+            for exp in exps:
                 print(exp)
                 if exp.getFrontierSize() == 0:
                     noFrontier += 1
@@ -74,9 +79,54 @@ class HighLevel:
         Parse the list of Explanations to obtain useful information.
 
         :param exps: list of Explanations
-        :return:
+        :return: goal and frontier information
         """
-        pass
+        if len(exps) > 2:
+            print("Too many possibilities, I'm not sure...")
+        else:
+            exp: Explanation = None
+            if len(exps) > 1:
+                probs = [exp.getExpProbability() for exp in exps]
+                if probs[1] == probs[2]:
+                    exp = random.choice(probs)  # If two equally probable explanation, pick one at random
+            else:
+                exp = exps[0]
+            # Extract data from the most probable explanation
+            goal_node = exp.getTrees()[0].getRoot()
+            goal = goal_node._ch
+            g_params = goal_node._params
+            print("Goal: {0} with parameters {1}".format(goal, g_params))
+            frontier = exp.getTrees()[0].getFrontier()
+            frontier_nodes = [s.getRoot() for s in frontier]
+            print("Frontier: {0}".format(frontier_nodes))
+            return goal, frontier_nodes
+
+    def run(self) -> None:
+        self.stop_flag = False  # This is done to avoid unexpected behavior
+        if self.debug:
+            print("[DEBUG] " + self.__class__.__name__ + " thread is running in background.")
+        while not self.stop_flag:
+            # Retrieves a new observation, when available
+            observation = self.internal_comms.get()  # Blocking call
+            if observation is False:
+                # The goal is unknown
+                return
+            else:   # An observation was appended
+                self.use_observation_file(OBSERVATIONS_FILE)    # Recalculate observations from the file
+                exps = self.explain(debug=False)    # try to explain them
+                if exps is not None:
+                    goal, frontier = self.parse_explanations(exps)
+                    self.internal_comms.write_goal((goal, frontier))   # Report the goal to the low-level
+                    # At this point, it must stop executing
+                    self.stop()
+
+
+
+
+
+
+
+
 
     # --- Code below from CRADLE's implementation --- #
 

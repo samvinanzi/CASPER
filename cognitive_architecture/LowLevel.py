@@ -1,7 +1,6 @@
 """
 Low-Level cognitive architecture (from QSR to contextualized actions)
 """
-import numpy as np
 
 from cognitive_architecture.FocusBelief import FocusBelief
 from qsrlib.qsrlib import QSRlib, QSRlib_Request_Message
@@ -13,6 +12,9 @@ from cognitive_architecture.TreeTrainer import TreeTrainer
 from cognitive_architecture.EpisodeFactory import EpisodeFactory
 from cognitive_architecture.MarkovFSM import ensemble
 from cognitive_architecture.Contextualizer import Contextualizer
+from cognitive_architecture.Bridge import Bridge
+from cognitive_architecture.InternalComms import InternalComms
+import time
 
 BASEDIR = basedir = Path(__file__).parent.parent
 PICKLE_DIR = "data/pickle"
@@ -20,9 +22,11 @@ SAVE_DIR = "data/cognition"
 
 
 class LowLevel:
-    def __init__(self, tq):
+    def __init__(self, tq, internal_comms):
         self.tq = tq
-        self.world_trace = World_Trace()
+        self.internal_comms: InternalComms = internal_comms
+        self.bridge: Bridge = Bridge()
+        self.world_trace: World_Trace = World_Trace()
         self.qsrlib = QSRlib()
         self.which_qsr = ["argd", "qtcbs", "mos"]
         self.tree = None
@@ -119,7 +123,7 @@ class LowLevel:
             assert isinstance(save_id, int), "save_id must be of type int."
             base_pickle_dir = os.path.join(BASEDIR, PICKLE_DIR)
             pickle.dump(qsrlib_response_message, open(os.path.join(base_pickle_dir,
-                                                                   "qsr_response{0}.p".format(save_id)),"wb"))
+                                                                   "qsr_response{0}.p".format(save_id)), "wb"))
             pickle.dump(self.world_trace, open(os.path.join(base_pickle_dir, "world_trace{0}.p".format(save_id)), "wb"))
             print("[DEBUG] Pickled QSR data to {0}".format(base_pickle_dir))
         return qsrlib_response_message
@@ -181,7 +185,8 @@ class LowLevel:
         return trainer.k_fold_cross_validation(min, max)
 
     def test(self, debug=True):
-        while True:
+        goal_found = False
+        while not goal_found:
             # Collect the latest observation
             latest_timestamp = self.observe(1)
             if debug:
@@ -239,8 +244,20 @@ class LowLevel:
                             ca = contextualizer.give_context(action, context)
                             if debug:
                                 print("{0} was contextualized in {1}".format(action, ca))
+                            # Retrieve the format of that action
+                            data = self.bridge.retrieve_data(ca)
+                            if data is None:
+                                continue
+                            params = self.focus.get_top_n_items(data.number_of_parameters())
+                            if debug:
+                                print("Parameters for action {0} are: {1}".format(ca, params))
+                            self.bridge.append_observation(data, params)    # Writes the observation XML
+                            # Signal the high level
+                            self.internal_comms.put(True)
+                            time.sleep(.2)  # Gives HL time to fetch the data and detect a new goal
                             # Try to predict the overall plan
-                            # todo
-                            break
+                            goal, frontier = self.internal_comms.get_goal()
+                            if goal:
+                                goal_found = True  # Exit condition
                     # Collaborate
-                    # todo
+                    print("END! Robot will collaborate by executing {0}".format(frontier[0]))   # todo placeholder

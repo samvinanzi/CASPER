@@ -1,3 +1,5 @@
+import time
+
 from cognitive_architecture.FocusBelief import FocusBelief
 from cognitive_architecture.TreeTrainer import TreeTrainer
 import pickle
@@ -8,6 +10,7 @@ from cognitive_architecture.EpisodeFactory import EpisodeFactory
 from cognitive_architecture.MarkovFSM import ensemble
 from cognitive_architecture.HighLevel import HighLevel
 from cognitive_architecture.Bridge import Bridge
+from cognitive_architecture.InternalComms import InternalComms
 
 '''
 factory = DataFrameFactory()
@@ -67,17 +70,35 @@ context = list(focus.get_top_n_items(2))[1]
 '''
 
 
-
-
+'''
 bridge = Bridge()
 data = bridge.retrieve_data("pick and place")
 bridge.append_observation(data, ['biscuits', 'plate'])
 data = bridge.retrieve_data("eat")
 bridge.append_observation(data, ['biscuits'])
 
-hl = HighLevel('Domain_kitchen.xml', 'Observations.xml', True)
-hl.explain(debug=True)
+ic = InternalComms()
 
+hl = HighLevel(ic, 'Domain_kitchen.xml', debug=True)
+hl.use_observation_file('Observations.xml')
+exps = hl.explain(debug=False)
+hl.parse_explanations(exps)
+'''
+
+ic = InternalComms()
+hl = HighLevel(ic, 'Domain_kitchen.xml')
+hl.start()
+bridge = Bridge()
+time.sleep(1)
+print("About to insert pnp...")
+data = bridge.retrieve_data("pick and place")
+bridge.append_observation(data, ['biscuits', 'plate'])
+ic.put(True)
+time.sleep(2)
+print("About to insert eat...")
+data = bridge.retrieve_data("eat")
+bridge.append_observation(data, ['biscuits'])
+ic.put(True)
 
 print("\nDone")
 pass

@@ -74,7 +74,7 @@ class Bridge:
         Appends an observation to an xml file.
 
         :param data: ObservationData object
-        :param parameters: lists of parameters
+        :param parameters: lists of parameter names
         :return: None
         """
         assert data.number_of_parameters() == len(parameters),\

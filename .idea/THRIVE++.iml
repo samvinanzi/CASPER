@@ -14,6 +14,7 @@
       <sourceFolder url="file://$MODULE_DIR$/../strands_qsr_lib-master/qsr_lib/src/qsrlib_qstag" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/../strands_qsr_lib-master/qsr_lib/src/qsrlib_ros" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/../strands_qsr_lib-master/qsr_lib/src/qsrlib_utils" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../strands_qsr_lib-master/qsr_lib/src" isTestSource="false" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
