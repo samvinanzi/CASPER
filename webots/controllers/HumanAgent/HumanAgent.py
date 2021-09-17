@@ -2,7 +2,6 @@
 HumanAgent controller.
 Derives from Agent.
 """
-import copy
 
 from Agent import Agent
 from controller import Node, Field

@@ -7,6 +7,7 @@ import copy
 import sys
 import xml.etree.ElementTree as ET
 import os
+from pathlib import Path
 from cognitive_architecture.StopThread import StopThread
 from CRADLE.Algorithm import ExplainAndCompute
 from CRADLE.Sigma import Sigma, NT
@@ -15,6 +16,7 @@ import CRADLE.PL as PL
 import CRADLE.Explanation as Explanation
 from cognitive_architecture.InternalComms import InternalComms
 import random
+from util.PathProvider import path_provider
 
 DATA_DIR = "data/CRADLE"
 OBSERVATIONS_FILE = "Observations.xml"
@@ -112,7 +114,7 @@ class HighLevel(StopThread):
                 # The goal is unknown
                 return
             else:   # An observation was appended
-                self.use_observation_file(OBSERVATIONS_FILE)    # Recalculate observations from the file
+                self.use_observation_file(path_provider.get_observations())    # Recalculate observations from the file
                 exps = self.explain(debug=False)    # try to explain them
                 if exps is not None:
                     goal, frontier = self.parse_explanations(exps)
@@ -138,8 +140,9 @@ class HighLevel(StopThread):
         return None
 
     def readDomain(self, domain_file):
-        domain_file_path = os.path.join(DATA_DIR, domain_file)
-        tree = ET.parse(domain_file_path)
+        #domain_file_path = os.path.join(DATA_DIR, domain_file)
+        #domain_file_path = Path(DATA_DIR / domain_file).resolve()
+        tree = ET.parse(path_provider.get_domain(domain_file))
         root = tree.getroot()
 
         # Read NTs
@@ -193,8 +196,8 @@ class HighLevel(StopThread):
         return myPL
 
     def readObservations(self, pl, observation_file):
-        observations_file_path = os.path.join(DATA_DIR, observation_file)
-        tree = ET.parse(observations_file_path)
+        #observations_file_path = os.path.join(DATA_DIR, observation_file)
+        tree = ET.parse(path_provider.get_observations())
         root = tree.getroot()
         observations = []
         for observation in root:

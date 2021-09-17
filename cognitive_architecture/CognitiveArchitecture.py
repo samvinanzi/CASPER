@@ -9,8 +9,7 @@ from cognitive_architecture.ObservationQueue import ObservationQueue
 from cognitive_architecture.InternalComms import InternalComms
 from cognitive_architecture.Bridge import Bridge
 
-DOMAIN_FILE = "data/CRADLE/Domain_kitchen.xml"
-OBSERVATION_FILE = "data/CRADLE/Observations_kitchen.xml"   # todo change to dynamically generated XML file
+DOMAIN_FILE = "Domain_kitchen.xml"
 
 
 class CognitiveArchitecture(Thread):
@@ -18,8 +17,8 @@ class CognitiveArchitecture(Thread):
         self.mode = mode.upper()
         assert self.mode == "TRAIN" or mode == "TEST", "mode accepts parameters 'train' or 'test'."
         Thread.__init__(self)
-        self.tq = ObservationQueue()
         self.internal_comms = InternalComms()
+        self.tq = ObservationQueue()
         self.lowlevel = LowLevel(self.tq, self.internal_comms) # todo tq only inside LowLevel?
         self.highlevel = HighLevel(self.internal_comms, DOMAIN_FILE)    # No observations are provided on startup
 
@@ -27,9 +26,10 @@ class CognitiveArchitecture(Thread):
         return True if self.mode == "TRAIN" else False
 
     def run(self):
+        print("[DEBUG] " + self.__class__.__name__ + " thread is running in {0} mode.\n".format(self.mode))
         if self.mode == "TRAIN":
             self.lowlevel.train(min=0, max=0, save_id=None)
         else:   # TEST
             self.lowlevel.load()    # Reloads the trained models
-            self.highlevel.run()
+            self.highlevel.start()
             self.lowlevel.test()

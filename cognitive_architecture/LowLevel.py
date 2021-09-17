@@ -3,10 +3,10 @@ Low-Level cognitive architecture (from QSR to contextualized actions)
 """
 
 from cognitive_architecture.FocusBelief import FocusBelief
+from cognitive_architecture.ObservationQueue import ObservationQueue
 from qsrlib.qsrlib import QSRlib, QSRlib_Request_Message
 from qsrlib_io.world_trace import World_Trace
 import pickle
-import os
 from pathlib import Path
 from cognitive_architecture.TreeTrainer import TreeTrainer
 from cognitive_architecture.EpisodeFactory import EpisodeFactory
@@ -15,6 +15,7 @@ from cognitive_architecture.Contextualizer import Contextualizer
 from cognitive_architecture.Bridge import Bridge
 from cognitive_architecture.InternalComms import InternalComms
 import time
+from util.PathProvider import path_provider
 
 BASEDIR = basedir = Path(__file__).parent.parent
 PICKLE_DIR = "data/pickle"
@@ -56,8 +57,8 @@ class LowLevel:
 
         :return: None
         """
-        path = (BASEDIR / SAVE_DIR / "tree.p").resolve()
-        pickle.dump(self.tree, open(path, "wb"))
+        #path = (BASEDIR / SAVE_DIR / "tree.p").resolve()
+        pickle.dump(self.tree, open(path_provider.get_save('tree.p'), "wb"))
 
     def load(self):
         """
@@ -65,8 +66,8 @@ class LowLevel:
 
         :return: None
         """
-        path = (BASEDIR / SAVE_DIR / "tree.p").resolve()
-        self.tree = pickle.load(open(path, "rb"))
+        #path = (BASEDIR / SAVE_DIR / "tree.p").resolve()
+        self.tree = pickle.load(open(path_provider.get_save('tree.p'), "rb"))
 
     def observe(self, to_observe=float('inf')):
         """
@@ -121,11 +122,13 @@ class LowLevel:
             pretty_print_world_qsr_trace(qsrlib_response_message)
         if save_id is not None:
             assert isinstance(save_id, int), "save_id must be of type int."
-            base_pickle_dir = os.path.join(BASEDIR, PICKLE_DIR)
-            pickle.dump(qsrlib_response_message, open(os.path.join(base_pickle_dir,
-                                                                   "qsr_response{0}.p".format(save_id)), "wb"))
-            pickle.dump(self.world_trace, open(os.path.join(base_pickle_dir, "world_trace{0}.p".format(save_id)), "wb"))
-            print("[DEBUG] Pickled QSR data to {0}".format(base_pickle_dir))
+            #base_pickle_dir = os.path.join(BASEDIR, PICKLE_DIR)
+            pickle.dump(qsrlib_response_message, open(path_provider.get_pickle("qsr_response{0}.p".format(save_id)), "wb"))
+            pickle.dump(self.world_trace, open(path_provider.get_pickle("world_trace{0}.p".format(save_id)), "wb"))
+            #pickle.dump(qsrlib_response_message, open(os.path.join(base_pickle_dir,
+            #                                                       "qsr_response{0}.p".format(save_id)), "wb"))
+            #pickle.dump(self.world_trace, open(os.path.join(base_pickle_dir, "world_trace{0}.p".format(save_id)), "wb"))
+            print("[DEBUG] Pickled QSR data to {0}".format(path_provider.get_pickle('')))
         return qsrlib_response_message
 
     def train(self, min=0, max=9, save_id=None):

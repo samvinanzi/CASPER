@@ -85,6 +85,7 @@ exps = hl.explain(debug=False)
 hl.parse_explanations(exps)
 '''
 
+'''
 ic = InternalComms()
 hl = HighLevel(ic, 'Domain_kitchen.xml')
 hl.start()
@@ -99,6 +100,12 @@ print("About to insert eat...")
 data = bridge.retrieve_data("eat")
 bridge.append_observation(data, ['biscuits'])
 ic.put(True)
+'''
+
+from util.PathProvider import PathProvider
+
+pp = PathProvider()
+print(pp.get_pickle(''))
 
 print("\nDone")
 pass

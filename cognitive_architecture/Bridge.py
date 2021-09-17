@@ -5,9 +5,11 @@ Acts as a bridge between the low and high levels of the cognitive architecture.
 import xml.etree.ElementTree as ET
 import pandas as pd
 from pathlib import Path
+from util.PathProvider import path_provider
 
-CONFIG_FILE = 'config/observation_encoding.csv'
-OBSERVATIONS_FILE = 'data/CRADLE/Observations.xml'
+#BASEDIR = basedir = Path(__file__).parent.parent
+#CONFIG_FILE = 'config/observation_encoding.csv'
+#OBSERVATIONS_FILE = 'data/CRADLE/Observations.xml'
 
 
 class ObservationData:
@@ -23,7 +25,7 @@ class ObservationData:
 class Bridge:
     def __init__(self):
         # Loads the configuration file
-        self.config = pd.read_csv(CONFIG_FILE, names=['name', 'id', 'param1', 'param2'])
+        self.config = pd.read_csv(path_provider.get_encodings(), names=['name', 'id', 'param1', 'param2'])
         self.initialize_xml()
 
     def retrieve_data(self, observation):
@@ -56,7 +58,7 @@ class Bridge:
 
         :return: None
         """
-        of = Path(OBSERVATIONS_FILE)
+        of = path_provider.get_observations()
         # If the file already exists, deletes the old version
         if of.is_file():
             try:
@@ -67,7 +69,7 @@ class Bridge:
         # Populates the file with the root element
         root = ET.Element("Observations")
         tree = ET.ElementTree(root)
-        tree.write(OBSERVATIONS_FILE, encoding="ISO-8859-1", xml_declaration=True)
+        tree.write(of, encoding="ISO-8859-1", xml_declaration=True)
 
     def append_observation(self, data: ObservationData, parameters):
         """
@@ -80,11 +82,11 @@ class Bridge:
         assert data.number_of_parameters() == len(parameters),\
             "Needed exactly {0} parameters for observation {1}, provided {2}".\
                 format(data.number_of_parameters(), data.name, len(parameters))
-        tree = ET.parse(OBSERVATIONS_FILE)
+        tree = ET.parse(path_provider.get_observations())
         root = tree.getroot()
         # Creates one Observation sub-element
         observation = ET.SubElement(root, "Observation", attrib={'id': data.id})
         for i in range(data.number_of_parameters()):
             # Populates the parameters
             param = ET.SubElement(observation, "Param", attrib={'name': data.params[i], 'val': parameters[i]})
-        tree.write(OBSERVATIONS_FILE, encoding="ISO-8859-1", xml_declaration=True)
+        tree.write(path_provider.get_observations(), encoding="ISO-8859-1", xml_declaration=True)

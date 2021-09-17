@@ -4,6 +4,7 @@ Derives from Agent.
 
 TIAGo++: https://www.cyberbotics.com/doc/guide/tiagopp?version=master
 """
+
 import math
 import pickle
 
@@ -14,6 +15,7 @@ from qsrlib.qsrlib import QSRlib, QSRlib_Request_Message
 from qsrlib_io.world_trace import Object_State
 from cognitive_architecture.Episode import *
 from cognitive_architecture.CognitiveArchitecture import CognitiveArchitecture
+from util.PathProvider import path_provider
 
 BASEDIR = "..\..\..\..\THRIVE++"
 PICKLE_DIR = "data\pickle"
@@ -373,8 +375,8 @@ class RobotAgent(Agent):
 
     def process_data(self, qsr_response, current_timestamp=0):
         # DEBUG:
-        file = os.path.join(BASEDIR, PICKLE_DIR, 'qsr_response.p')
-        qsr_response = pickle.load(open(file, "rb"))
+        #file = os.path.join(BASEDIR, PICKLE_DIR, 'qsr_response.p')
+        qsr_response = pickle.load(open(path_provider.get_pickle('qsr_response.p'), "rb"))
         ep = Episode(time=current_timestamp)
         # world_qsr.trace[4].qsrs['o1,o2'].qsr['rcc8']
         trace = qsr_response.qsrs.trace[current_timestamp]

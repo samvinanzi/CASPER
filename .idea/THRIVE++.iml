@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <module type="PYTHON_MODULE" version="4">
   <component name="NewModuleRootManager">
-    <content url="file://$USER_HOME$/AppData/Local/Programs/Webots/lib/controller/python39">
-      <sourceFolder url="file://$USER_HOME$/AppData/Local/Programs/Webots/lib/controller/python39" isTestSource="false" />
+    <content url="file://C:/Program Files/Webots/lib/controller/python39">
+      <sourceFolder url="file://C:/Program Files/Webots/lib/controller/python39" isTestSource="false" />
     </content>
     <content url="file://$MODULE_DIR$">
       <excludeFolder url="file://$MODULE_DIR$/venv" />

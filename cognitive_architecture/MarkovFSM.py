@@ -55,7 +55,7 @@ class EnsembleFSM:
             model = MarkovFSM(chain, action_names[i], initial_probabilities[i])
             self.models.append(model)
 
-    def add_observation(self, observation, w=4, debug=True):
+    def add_observation(self, observation, w=3, debug=True):
         """
         Adds an observation to the queue. Implements the Transition Analysis to filter out repetitions.
 
