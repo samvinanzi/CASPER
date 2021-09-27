@@ -383,7 +383,7 @@ class HumanAgent(Agent):
     def is_trainingmode(self):
         return True if self.mode == "TRAIN" else False
 
-    def grasp_object(self, target_name : str):
+    def grasp_object(self, target_name: str):
         """
         Positions the human in a grasping pose, then attaches the object (specified by its name) to the hand. Warning:
         the object is grasped even if it is not in range!
@@ -573,6 +573,51 @@ class HumanAgent(Agent):
         label_field: Field = self.supervisor.getSelf().getField("trainingTaskTarget")
         label_field.setSFString(label)
 
+    def use(self, destination: str, length=2):
+        """
+        Performs the action "Use" (Place, Pick, Place)
+
+        :param destination: str, name of the desired surface node
+        :param length: number of place/pick cycles
+        :return None
+        """
+        assert self.object_in_hand is not None, "No object to use in hand."
+        target = self.object_in_hand.getField("name")
+        for i in range(length):
+            # Tries to place, if successful tries to pick. If either one fails, stops the loop
+            success = self.release_object(destination) and self.grasp_object(target)
+            if not success:
+                print("Use action failed")
+                return False
+        return True
+
+    def relocate(self, coordinates):
+        """
+        Performs the action "Relocate" (Still, Walk, Still)
+
+        :param coordinates: (X, Z) coordinates
+        :return None
+        """
+        self.busy_waiting(3, label="STILL")
+        self.walk_simplified(coordinates, speed=0.2)
+        self.busy_waiting(3, label="STILL")
+
+    def pick_and_place(self, target: str, destination: str):
+        """
+        Pick and place.
+
+        :param target: string, name of the object to pick
+        :param destination: string, name of the destination node
+        :return None
+        """
+        self.busy_waiting(2, label="STILL")
+        if self.approach_target(target, speed, debug):
+            self.grasp_object(target)
+            if self.approach_target(destination, speed, debug):
+                self.release_object(destination)
+        return
+
+
 # MAIN LOOP
 
 human = HumanAgent()
@@ -580,17 +625,6 @@ speed = 2
 debug = False
 
 while human.step():
-    """
-    human.walk_simplified((-2.73, 4.05), speed=0.2)
-    human.walk_simplified((-5.88, -4.21), speed=0.2)
-    human.walk_simplified((4.38679, -4.8212), speed=0.2)
-    human.walk_simplified((4.4642, -1.04344), speed=0.2)
-    """
-    human.busy_waiting(3, label="STILL")
-    if human.approach_target("coca-cola", speed, debug):
-        human.grasp_object("coca-cola")
-        if human.approach_target("table(1)", speed, debug):
-            human.release_object("table(1)")
-            #human.walk_simplified((0, 0), speed, debug)
-            human.busy_waiting(-1, label="STILL")
-    break
+    human.busy_waiting(3, label="STILL")    # Intro
+    human.pick_and_place('coca-cola', 'table(1)')
+    human.busy_waiting(-1, label="STILL")   # Outro
