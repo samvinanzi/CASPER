@@ -8,7 +8,7 @@ from controller import Node, Field
 import math
 import numpy as np
 from path_planning.robot_astar import RoboAStar
-from maps.Kitchen import Kitchen
+from maps.Kitchen2 import Kitchen2 as Kitchen
 
 
 class HumanAgent(Agent):
@@ -294,7 +294,9 @@ class HumanAgent(Agent):
             # If identified, gets its world position
             target_position = self.convert_to_2d_coords(target.getPosition())
             # Trace a path to the destination
+            print("Path planning, please wait...")
             path = self.path_planning(target_position, show=False)
+            print("Path found!")
             if path is not None:
                 print("Walking towards {0}".format(target_name))
                 # Updates the training fields
@@ -306,9 +308,13 @@ class HumanAgent(Agent):
                     self.update_training_label("WALK")
                     self.update_training_target(target_name)
                 for waypoint in path:
-                    self.walk_simplified(waypoint, speed=speed, debug=debug)
+                    self.walk_simplified(waypoint, speed=speed, debug=False)        #todo re-enable if required
                 self.turn_towards(target_position)
                 return True
+            else:
+                print("Couldn't path plan to {0}!".format(target_name))
+        else:
+            print("Couldn't find target: {0}".format(target_name))
         return False
 
     def path_planning(self, goal, show=False):
@@ -383,7 +389,7 @@ class HumanAgent(Agent):
     def is_trainingmode(self):
         return True if self.mode == "TRAIN" else False
 
-    def grasp_object(self, target_name: str):
+    def pick(self, target_name: str):
         """
         Positions the human in a grasping pose, then attaches the object (specified by its name) to the hand. Warning:
         the object is grasped even if it is not in range!
@@ -392,6 +398,7 @@ class HumanAgent(Agent):
         :return: True if successful, False otherwise
         """
         assert isinstance(target_name, str), "Must specify a string name to search for"
+        print("PICK {0}".format(target_name))
         self.hand_forward()
         target: Node = self.all_nodes.get(target_name)
         if target is not None:
@@ -418,35 +425,41 @@ class HumanAgent(Agent):
             return True
         return False
 
-    def release_object(self, destination):
+    def place(self, destination_name):
         """
         Releases the hand-held object on a target destination (must be a surface)
         :param destination: str, name of the desired surface node
         :return: True if successful, False otherwise
         """
-        assert isinstance(destination, str), "Must specify a string name to search for"
+        assert isinstance(destination_name, str), "Must specify a string name to search for"
+        print("PLACE {0} {1}".format(self.object_in_hand.getField("name").getSFString(), destination_name))
         if self.object_in_hand is not None:
-            destination: Node = self.all_nodes.get(destination)
+            destination: Node = self.all_nodes.get(destination_name)
             if destination is not None:
                 target_name = self.object_in_hand.getField("name").getSFString()
                 # Verifies that the destination is an acceptable surface
-                accepted_types = ["Table"]
+                accepted_types = ["Table", "Plate", "Sink", "HotPlate", "Glass", "Worktop"]
                 if destination.getTypeName() not in accepted_types:
-                    print("Destination must be one of: {0}".format(accepted_types))
+                    print("Destination must be one of: {0} (selected: {1})".format(accepted_types, destination.getTypeName()))
                 else:
+                    """ Old position calculation, based on a table. New one is based on destination object.
                     # The destination must have X and Z coordinates of the surface, Y equal to the table height
-                    table_trans = destination.getField("translation").getSFVec3f()
+                    surface_trans = destination.getField("translation").getSFVec3f()
                     # Get the height of the table (Y)
-                    table_size = destination.getField("size").getSFVec3f()
-                    table_height = table_size[1]
+                    surface_size = destination.getField("size").getSFVec3f()
+                    surface_height = surface_size[1]
                     # Calculate the new position and assign it
-                    final_position = [table_trans[0], table_height, table_trans[2]]
+                    final_position = [surface_trans[0], surface_height, surface_trans[2]]
+                    """
+                    surface_trans = destination.getField("translation").getSFVec3f()
+                    from copy import copy
+                    final_position = copy(surface_trans)
                     if self.is_trainingmode():
                         self.busy_waiting(2, label="PLACE", target=target_name)     # wait
                     self.update_training_label("PLACE")
                     self.update_training_target(target_name)
                     self.object_in_hand.getField("translation").setSFVec3f(final_position)
-                    print("Deposited the {0} in {1}".format(self.object_in_hand.getTypeName(), final_position))
+                    #print("Deposited the {0} in {1}".format(self.object_in_hand.getTypeName(), final_position))
                     # Free the hand and reset the stance
                     self.object_in_hand = None
                     object_held_field: Field = self.supervisor.getSelf().getField("heldObjectReference")
@@ -456,7 +469,7 @@ class HumanAgent(Agent):
                     self.neutral_position()
                     return True
         else:
-            print("Can't find destination {0} to release object!".format(destination))
+            print("Can't find destination {0} to release object!".format(destination_name))
         return False
 
     def move_object_in_hand(self):
@@ -573,7 +586,7 @@ class HumanAgent(Agent):
         label_field: Field = self.supervisor.getSelf().getField("trainingTaskTarget")
         label_field.setSFString(label)
 
-    def use(self, destination: str, length=2):
+    def use(self, target, destination: str, length=2, debug=True):
         """
         Performs the action "Use" (Place, Pick, Place)
 
@@ -581,15 +594,45 @@ class HumanAgent(Agent):
         :param length: number of place/pick cycles
         :return None
         """
-        assert self.object_in_hand is not None, "No object to use in hand."
-        target = self.object_in_hand.getField("name")
+        #assert self.object_in_hand is not None, "No object to use in hand."
+        assert length > 0, "Lenght must be a positive integer"
+        #target = self.object_in_hand.getField("name")
         for i in range(length):
             # Tries to place, if successful tries to pick. If either one fails, stops the loop
-            success = self.release_object(destination) and self.grasp_object(target)
-            if not success:
-                print("Use action failed")
-                return False
+            if debug:
+                print("[DEBUG] Picking {0}".format(target))
+            if self.pick(target):
+                #self.busy_waiting(duration=0.5)
+                if debug:
+                    print("[DEBUG] Placing {0} on {1}".format(target, destination))
+                if self.place(destination):
+                    continue
+            print("Use action failed")
+            return False
         return True
+
+    def pick_and_place(self, target: str, destination: str, debug=True):
+        """
+        Pick and place.
+
+        :param target: string, name of the object to pick
+        :param destination: string, name of the destination node
+        :return None
+        """
+        self.busy_waiting(2, label="STILL")
+        if debug:
+            print("[DEBUG] Approaching: {0}".format(target))
+        if self.approach_target(target, speed, debug):
+            if debug:
+                print("[DEBUG] Arrived at {0}. Attempting to pick.".format(target))
+            self.pick(target)
+            if debug:
+                print("[DEBUG] Approaching: {0}".format(destination))
+            self.approach_target(destination, speed, debug)
+            if debug:
+                print("[DEBUG] Arrived at {0}. Attempting to place.".format(destination))
+            self.place(destination)
+        return
 
     def relocate(self, coordinates):
         """
@@ -602,20 +645,27 @@ class HumanAgent(Agent):
         self.walk_simplified(coordinates, speed=0.2)
         self.busy_waiting(3, label="STILL")
 
-    def pick_and_place(self, target: str, destination: str):
-        """
-        Pick and place.
+    # GOALS #
 
-        :param target: string, name of the object to pick
-        :param destination: string, name of the destination node
-        :return None
-        """
-        self.busy_waiting(2, label="STILL")
-        if self.approach_target(target, speed, debug):
-            self.grasp_object(target)
-            if self.approach_target(destination, speed, debug):
-                self.release_object(destination)
-        return
+    def breakfast(self):
+        self.pick_and_place("biscuits", "plate")
+        self.use("biscuits", "plate")
+        self.pick_and_place("plate", "sink")
+        self.use("plate", "sink")
+
+    def lunch(self):
+        self.pick_and_place("meal", "hobs")
+        self.use("meal", "hobs")
+        self.pick_and_place("meal", "plate")
+        self.use("meal", "plate")
+        self.pick_and_place("plate", "sink")
+        self.use("plate", "sink")
+
+    def drink(self):
+        self.pick_and_place("bottle", "worktop(4)")
+        self.use("glass", "worktop(4)")
+        self.pick_and_place("glass", "sink")
+        self.use("glass", "sink")
 
 
 # MAIN LOOP
@@ -625,6 +675,10 @@ speed = 2
 debug = False
 
 while human.step():
-    human.busy_waiting(3, label="STILL")    # Intro
-    human.pick_and_place('coca-cola', 'table(1)')
-    human.busy_waiting(-1, label="STILL")   # Outro
+    #human.busy_waiting(3, label="STILL")    # Intro
+    #human.pick_and_place('coca-cola', 'table(1)')
+    #human.breakfast()
+    #human.lunch()
+    human.drink()
+    break
+    #human.busy_waiting(-1, label="STILL")   # Outro
