@@ -178,8 +178,11 @@ class HumanFrame:
 
     def __str__(self):
         if self.target:
-            of = self.objects[self.target]
-            return "[MOS: {0}, HOLD: {1}, QDC: {2}, QTC: {2}]".format(self.MOS, self.HOLD, of.QDC, of.QTC)
+            try:
+                of = self.objects[self.target]
+                return "[MOS: {0}, HOLD: {1}, QDC: {2}, QTC: {2}]".format(self.MOS, self.HOLD, of.QDC, of.QTC)
+            except KeyError:
+                return "[No data to display]"
         else:
             return "[MOS: {0}, HOLD: {1}, QDC: unknown, QTC: unknown]".format(self.MOS, self.HOLD)
 

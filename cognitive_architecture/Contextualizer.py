@@ -10,7 +10,7 @@ class Contextualizer:
                 'SINK': 'WASH',
                 'HOB': 'COOK',
                 'PLATE': 'EAT',
-                'GLASS': 'SIP'
+                'BOTTLE': 'SIP'
             }
         }
 

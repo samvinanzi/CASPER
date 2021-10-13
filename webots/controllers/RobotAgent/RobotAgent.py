@@ -25,7 +25,8 @@ agents = ["HumanAgent"]                     # Humans and other robots will initi
 # Some environmental elements and the robot itself are not considered
 excluded = ["CircleArena", "myTiago++", "SolidBox", "Window", "Wall", "Cabinet", "Floor", "Ceiling", "Door",
             "RoCKInShelf", "GM"]
-included = ["coca-cola", "human", "table(1)"]
+#included = ["coca-cola", "human", "table(1)"]
+included = ["human", "sink", "glass", "hobs", "biscuits", "meal", "plate", "bottle"]
 
 
 class RobotAgent(Agent):

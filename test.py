@@ -1,5 +1,6 @@
 import time
 
+import maps.Kitchen2
 from cognitive_architecture.FocusBelief import FocusBelief
 from cognitive_architecture.TreeTrainer import TreeTrainer
 import pickle
@@ -11,6 +12,7 @@ from cognitive_architecture.MarkovFSM import ensemble
 from cognitive_architecture.HighLevel import HighLevel
 from cognitive_architecture.Bridge import Bridge
 from cognitive_architecture.InternalComms import InternalComms
+from cognitive_architecture import *
 
 '''
 factory = DataFrameFactory()
@@ -102,10 +104,22 @@ bridge.append_observation(data, ['biscuits'])
 ic.put(True)
 '''
 
+'''
 from util.PathProvider import PathProvider
 
 pp = PathProvider()
 print(pp.get_pickle(''))
+'''
+
+#k2 = maps.Kitchen2.Kitchen2()
+#k2.visualize()
+
+from path_planning.robot_astar import RoboAStar
+
+planner = RoboAStar(self.supervisor, current_map, delta=0.3, min_distance=0.2, goal_radius=0.6)
+
+
+show()
 
 print("\nDone")
 pass

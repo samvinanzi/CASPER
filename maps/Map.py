@@ -5,6 +5,7 @@
 
 from abc import abstractmethod
 from shapely.geometry import Polygon, Point
+from shapely import speedups
 import matplotlib.pyplot as plt
 from random import uniform
 
@@ -12,8 +13,12 @@ from random import uniform
 class Map:
     @abstractmethod
     def __init__(self):
+        if speedups.available:
+            speedups.enable()   # Ensure Shapely speed-ups are enabled, when available
         self.obstacles = None
+        self.prepared_obstacles = None  # Prepared items enable fast computations
         self.room = None    # Outer shape of the environment
+        self.prepared_room = None
 
     @staticmethod
     def does_intersect(poly1: Polygon, poly2: Polygon):
@@ -36,30 +41,28 @@ class Map:
         """
         return Point(coordinates[0], coordinates[1])
 
-    def in_room(self, coordinate):
+    def in_room(self, point):
         """
         Checks if the specified coordinate is inside the room.
 
         :param coordinate: (x,y)
         :return: True/False
         """
-        point = self.coord_to_point(coordinate)
-        return self.room.contains(point)
+        return self.prepared_room.contains(point)
 
-    def on_obstacle(self, coordinate):
+    def on_obstacle(self, point):
         """
         Checks if an obstacle contains the specified coordinate.
 
         :param coordinate: (x,y)
         :return: True/False
         """
-        point = self.coord_to_point(coordinate)
-        for obstacle in self.obstacles:
-            if obstacle.contains(point):
+        for prepared_obstacle in self.prepared_obstacles:
+            if prepared_obstacle.contains(point):
                 return True
         return False
 
-    def distance_to_obstacles(self, coordinate):
+    def distance_to_obstacles(self, point):
         """
         Returns the minimum distance from the specified coordinate to the obstacles in the map, or infinite if the point
         is outside of the environment.
@@ -67,18 +70,23 @@ class Map:
         :param coordinate: (x,y)
         :return: float distance
         """
-        if not self.in_room(coordinate):
+        """
+        I decided to skip these checks, since they are typically done before or after this function. This should speed
+        it up a notch.
+        
+        if not self.in_room(point):
             return float("inf")     # If the point is outside the room, distance is infinite
-        elif self.on_obstacle(coordinate):
+        elif self.on_obstacle(point):
             return 0                # If the point is in or touches an obstacle, distance is zero
         else:
-            distances = []
-            # Calculate the distance from the point to each obstacle
-            for obstacle in self.obstacles:
-                distances.append(obstacle.distance(self.coord_to_point(coordinate)))
-            # Calculate the distance from the point to the wallks of the room
-            distances.append(self.room.exterior.distance(self.coord_to_point(coordinate)))
-            return round(min(distances), 2)
+        """
+        distances = []
+        # Calculate the distance from the point to each obstacle
+        for obstacle in self.obstacles:
+            distances.append(obstacle.distance(point))
+        # Calculate the distance from the point to the walls of the room
+        distances.append(self.room.exterior.distance(point))
+        return round(min(distances), 2)
 
     def visualize(self):
         """
@@ -138,7 +146,8 @@ class Map:
             x = round(uniform(p1[0], p2[0]), 2)
             y = round(uniform(p1[1], p2[1]), 2)
             coord = (x, y)
-            approved = self.in_room(coord) and not self.on_obstacle(coord) and self.distance_to_obstacles(coord) > 0.2
+            point = self.coord_to_point(coord)
+            approved = self.in_room(point) and not self.on_obstacle(point) and self.distance_to_obstacles(point) > 0.2
         return coord
 
     def sampling_test(self, n=20):

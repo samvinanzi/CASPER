@@ -3,6 +3,8 @@ Models the robot's belief on the human's focus.
 """
 
 from cognitive_architecture.Episode import ObjectFrame
+import matplotlib.pyplot as plt
+import threading
 
 
 class FocusBelief:
@@ -69,7 +71,7 @@ class FocusBelief:
             for key in self.raw_values.keys():
                 self.raw_values[key] = 1.0 / n
 
-    def add(self, object):
+    def add(self, object, show=True):
         """
         Adds an object to the set.
 
@@ -113,7 +115,7 @@ class FocusBelief:
         else:
             return dict(list(ranked_prob.items())[:n])
 
-    def has_confident_prediction(self, threshold=.6):
+    def has_confident_prediction(self, threshold=.7):
         """
         Determines if there is one confident prediction.
 
@@ -125,3 +127,29 @@ class FocusBelief:
             return True
         else:
             return False
+
+    def show(self):
+        """
+        Launches show_thread in parallel.
+
+        :return: None
+        """
+        th = threading.Thread(target=self.show_thread)
+        th.start()
+
+    def show_thread(self):
+        """
+        Plots the focus belief levels in a bar graph. Can be computationally expensive somehow, so parallelize it.
+
+        :return: None
+        """
+        objects = []
+        probs = []
+        for object, prob in self.normalized_probabilities.items():
+            objects.append(object)
+            probs.append(prob)
+        plt.bar(objects, probs, color='maroon', width=0.4)
+        plt.xlabel("Objects")
+        plt.ylabel("Probability")
+        plt.title("Focus belief")
+        plt.show()

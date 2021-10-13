@@ -8,7 +8,11 @@ from controller import Node, Field
 import math
 import numpy as np
 from path_planning.robot_astar import RoboAStar
-from maps.Kitchen2 import Kitchen2 as Kitchen
+from maps.Kitchen2 import Kitchen2
+from copy import copy
+import cProfile
+
+current_map = Kitchen2()
 
 
 class HumanAgent(Agent):
@@ -325,8 +329,7 @@ class HumanAgent(Agent):
         :param show: If True, visualizes the calculated path.
         :return: Path as a list of coordinates, or None if not found.
         """
-        kitchen_map = Kitchen()     # todo This has to go outside of the HumanAgent class, higher up
-        planner = RoboAStar(self.supervisor, kitchen_map, delta=0.45, min_distance=0.2, goal_radius=0.6)
+        planner = RoboAStar(self.supervisor, current_map, delta=0.3, min_distance=0.2, goal_radius=0.6)
         start = self.get_robot_position()
         if self.debug:
             print("[PATH-PLANNING] From {0} to {1}. Searching...".format(start, goal))
@@ -337,8 +340,8 @@ class HumanAgent(Agent):
             print("[PATH-PLANNING] Unable to compute a path from {0} to {1}.".format(start, goal))
         elif show:
             for waypoint in path:
-                kitchen_map.add_point_to_plot(waypoint)
-            kitchen_map.visualize()
+                current_map.add_point_to_plot(waypoint)
+            current_map.visualize()
         return path
 
     def neutral_position(self):
@@ -438,11 +441,11 @@ class HumanAgent(Agent):
             if destination is not None:
                 target_name = self.object_in_hand.getField("name").getSFString()
                 # Verifies that the destination is an acceptable surface
-                accepted_types = ["Table", "Plate", "Sink", "HotPlate", "Glass", "Worktop"]
+                accepted_types = ["Table", "Plate", "Sink", "HotPlate", "Glass", "Worktop", "WaterBottle"]
                 if destination.getTypeName() not in accepted_types:
                     print("Destination must be one of: {0} (selected: {1})".format(accepted_types, destination.getTypeName()))
                 else:
-                    """ Old position calculation, based on a table. New one is based on destination object.
+                    """ Old position calculation, based on a tabletop. New one is based on destination object.
                     # The destination must have X and Z coordinates of the surface, Y equal to the table height
                     surface_trans = destination.getField("translation").getSFVec3f()
                     # Get the height of the table (Y)
@@ -452,7 +455,6 @@ class HumanAgent(Agent):
                     final_position = [surface_trans[0], surface_height, surface_trans[2]]
                     """
                     surface_trans = destination.getField("translation").getSFVec3f()
-                    from copy import copy
                     final_position = copy(surface_trans)
                     if self.is_trainingmode():
                         self.busy_waiting(2, label="PLACE", target=target_name)     # wait
@@ -586,7 +588,7 @@ class HumanAgent(Agent):
         label_field: Field = self.supervisor.getSelf().getField("trainingTaskTarget")
         label_field.setSFString(label)
 
-    def use(self, target, destination: str, length=2, debug=True):
+    def use(self, target, destination: str, length=3, debug=True):
         """
         Performs the action "Use" (Place, Pick, Place)
 
@@ -594,15 +596,12 @@ class HumanAgent(Agent):
         :param length: number of place/pick cycles
         :return None
         """
-        #assert self.object_in_hand is not None, "No object to use in hand."
         assert length > 0, "Lenght must be a positive integer"
-        #target = self.object_in_hand.getField("name")
         for i in range(length):
             # Tries to place, if successful tries to pick. If either one fails, stops the loop
             if debug:
                 print("[DEBUG] Picking {0}".format(target))
             if self.pick(target):
-                #self.busy_waiting(duration=0.5)
                 if debug:
                     print("[DEBUG] Placing {0} on {1}".format(target, destination))
                 if self.place(destination):
@@ -611,7 +610,7 @@ class HumanAgent(Agent):
             return False
         return True
 
-    def pick_and_place(self, target: str, destination: str, debug=True):
+    def pick_and_place(self, target: str, destination: str, speed=2, debug=True):
         """
         Pick and place.
 
@@ -663,22 +662,28 @@ class HumanAgent(Agent):
 
     def drink(self):
         self.pick_and_place("bottle", "worktop(4)")
-        self.use("glass", "worktop(4)")
+        self.use("glass", "bottle")
         self.pick_and_place("glass", "sink")
         self.use("glass", "sink")
 
 
 # MAIN LOOP
 
-human = HumanAgent()
-speed = 2
-debug = False
+def main():
+    human = HumanAgent()
+    speed = 2
+    debug = False
 
-while human.step():
-    #human.busy_waiting(3, label="STILL")    # Intro
-    #human.pick_and_place('coca-cola', 'table(1)')
-    #human.breakfast()
-    #human.lunch()
-    human.drink()
-    break
-    #human.busy_waiting(-1, label="STILL")   # Outro
+    while human.step():
+        #human.busy_waiting(3, label="STILL")    # Intro
+        #human.pick_and_place('coca-cola', 'table(1)')
+        human.breakfast()
+        #human.lunch()
+        #human.drink()
+        #human.busy_waiting(-1, label="STILL")   # Outro
+        break
+
+
+# Run this code to benchmark execution time
+# cProfile.run('main()', sort='time')
+main()

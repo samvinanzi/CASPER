@@ -34,13 +34,20 @@ class LowLevel:
         self.focus = FocusBelief(human_name="human")
         self.ensemble = ensemble
 
+        objects_of_interest = ["sink", "glass", "hobs", "biscuits", "meal", "plate", "bottle"]  #todo external config?
+        qsrs_for = []
+        for ooi in objects_of_interest:
+            qsrs_for.append(("human", ooi))
+
         self.dynamic_args = {
             "argd": {
-                "qsrs_for": [("human", "coca-cola"), ("human", "table(1)")],
+                "qsrs_for": qsrs_for,
+                #"qsrs_for": [("human", "coca-cola"), ("human", "table(1)")],
                 "qsr_relations_and_values": {"touch": 0.6, "near": 1, "medium": 3, "far": 5}
             },
             "qtcbs": {
-                "qsrs_for": [("human", "coca-cola"), ("human", "table(1)")],
+                "qsrs_for": qsrs_for,
+                #"qsrs_for": [("human", "coca-cola"), ("human", "table(1)")],
                 "quantisation_factor": 0.01,
                 "validate": False,
                 "no_collapse": True

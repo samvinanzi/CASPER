@@ -80,8 +80,8 @@ class Agent:
             objects = self.camera.getRecognitionObjects()
             if debug:
                 print("I have recognized " + str(n_obj) + " object" + ("s" if n_obj != 1 else "") + "!")
-                print("Objects detected: ")
                 object_models = [object.get_model().decode('utf-8') for object in objects]
+                print("Objects detected: {0}".format(object_models))
             return objects
 
     def objects_models(self, objects):

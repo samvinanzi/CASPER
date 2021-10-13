@@ -3,6 +3,7 @@
 """
 
 from shapely.geometry import Polygon
+from shapely.prepared import prep
 from .Map import Map
 
 
@@ -15,4 +16,6 @@ class Kitchen2(Map):
         surfaces = Polygon([[-1.62, 2.14], [-0.95, 2.14], [-0.95, -1.42], [1.95, -1.42], [1.95, -2.15], [-1.62, -2.15]])
 
         self.obstacles = [table, coffee_table, surfaces]
+        self.prepared_obstacles = [prep(table), prep(coffee_table), prep(surfaces)]
         self.room = Polygon([[-1.62, -2.15], [-1.62, 2.14], [3.80, 2.14], [3.80, -1.13], [1.95, -1.13], [1.95, -2.15]])
+        self.prepared_room = prep(self.room)

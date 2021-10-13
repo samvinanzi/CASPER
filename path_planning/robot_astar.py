@@ -8,7 +8,7 @@ import numpy as np
 
 
 class RoboAStar(AStar):
-    def __init__(self, robot, map, delta=0.4, min_distance=0.2, goal_radius=0.6):
+    def __init__(self, robot, map, delta=0.3, min_distance=0.2, goal_radius=0.6):
         """
         Initializes the path planning algorithm.
 
@@ -72,13 +72,20 @@ class RoboAStar(AStar):
         p_global = np.dot(R, p_local) + T
         return (round(p_global[0], 2), round(p_global[2], 2))
 
+    def global_from_local_fast(self, R, current_position, p_local):
+        # Moved the calculation of R outside the function to speed up execution time
+        T = np.array([current_position[0], 1.27, current_position[1]])
+        p_global = np.dot(R, p_local) + T
+        return (round(p_global[0], 2), round(p_global[2], 2))
+
     def is_valid(self, destination):
         return self.map.in_room(destination)
 
     def is_occupied(self, destination):
         return self.map.on_obstacle(destination)
 
-    def neighbors(self, node):
+    def neighbors_old(self, node):
+        # Old, slow version
         directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
         neighbors = []
         for direction in directions:
@@ -87,6 +94,21 @@ class RoboAStar(AStar):
             # The position must be inside the environment, not occupied by an obstacle and not too close to one of them
             if self.is_valid(new_position) and not self.is_occupied(new_position) and \
                     distance_from_obstacles >= self.min_distance:
+                neighbors.append(new_position)
+        return neighbors
+
+    def neighbors(self, node):
+        directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+        neighbors = []
+        robot = self.robot.getSelf()
+        R = np.array(robot.getOrientation())
+        R = R.reshape(3, 3)     # Matrix R is calculated outside of the loop for faster computation
+        for direction in directions:
+            new_position = self.global_from_local_fast(R, node, self.calculate_coordinate(direction))
+            point = self.map.coord_to_point(new_position)
+            # The position must be inside the environment, not occupied by an obstacle and not too close to one of them
+            if self.is_valid(point) and not self.is_occupied(point) \
+                    and self.map.distance_to_obstacles(point) >= self.min_distance:
                 neighbors.append(new_position)
         return neighbors
 
