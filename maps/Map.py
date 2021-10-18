@@ -19,6 +19,8 @@ class Map:
         self.prepared_obstacles = None  # Prepared items enable fast computations
         self.room = None    # Outer shape of the environment
         self.prepared_room = None
+        self.free_space = None
+        self.prepared_free_space = None
 
     @staticmethod
     def does_intersect(poly1: Polygon, poly2: Polygon):
@@ -45,7 +47,7 @@ class Map:
         """
         Checks if the specified coordinate is inside the room.
 
-        :param coordinate: (x,y)
+        :param point: shapely.Point
         :return: True/False
         """
         return self.prepared_room.contains(point)
@@ -54,7 +56,7 @@ class Map:
         """
         Checks if an obstacle contains the specified coordinate.
 
-        :param coordinate: (x,y)
+        :param point: shapely.Point
         :return: True/False
         """
         for prepared_obstacle in self.prepared_obstacles:
@@ -62,12 +64,21 @@ class Map:
                 return True
         return False
 
+    def in_free_space(self, point):
+        """
+        Checks if the specified coordinate is inside the free space (avoid calculating 'in_room' and 'not on_obstacles')
+
+        :param point: shapely.Point
+        :return: True/False
+        """
+        return self.prepared_free_space.contains(point)
+
     def distance_to_obstacles(self, point):
         """
         Returns the minimum distance from the specified coordinate to the obstacles in the map, or infinite if the point
         is outside of the environment.
 
-        :param coordinate: (x,y)
+        :param point: shapely.Point
         :return: float distance
         """
         """

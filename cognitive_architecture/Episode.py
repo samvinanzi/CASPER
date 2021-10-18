@@ -196,3 +196,6 @@ class ObjectFrame:
         self.QDC = qdc.upper()
         self.QTC = qtc
         self.label = label
+
+    def __str__(self):
+        return "{0}: QDC: {1}, QTC: {2}".format(self.name, self.QDC, self.QTC)

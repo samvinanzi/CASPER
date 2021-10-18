@@ -107,8 +107,9 @@ class RoboAStar(AStar):
             new_position = self.global_from_local_fast(R, node, self.calculate_coordinate(direction))
             point = self.map.coord_to_point(new_position)
             # The position must be inside the environment, not occupied by an obstacle and not too close to one of them
-            if self.is_valid(point) and not self.is_occupied(point) \
-                    and self.map.distance_to_obstacles(point) >= self.min_distance:
+            #if self.is_valid(point) and not self.is_occupied(point) \
+            #        and self.map.distance_to_obstacles(point) >= self.min_distance:
+            if self.map.in_free_space(point) and self.map.distance_to_obstacles(point) >= self.min_distance:
                 neighbors.append(new_position)
         return neighbors
 
