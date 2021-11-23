@@ -79,6 +79,7 @@ class FocusBelief:
         :return: None
         """
         p = self.p(object)
+        print("{0} ==> {1}".format(object,p))
         self.raw_values[object.name] = p
         self.normalize_all()
 
@@ -89,7 +90,7 @@ class FocusBelief:
         :return: None
         """
         for key, value in self.normalized_probabilities.items():
-            print("{0}: {1}%".format(key, value))
+            print("{0}: {1}%".format(key, value*100.0))
         print("\n#-------#")
 
     def get_ranked_probabilities(self):

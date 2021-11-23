@@ -43,7 +43,7 @@ class RobotAgent(Agent):
 
         # todo !
         self.cognition = CognitiveArchitecture(mode="TEST")
-        self.cognition.start()
+        #self.cognition.start()
         #self.world_trace = self.cognition.expose_world_trace()
         self.update_world_trace()
         # todo !
@@ -176,8 +176,8 @@ class RobotAgent(Agent):
                     #self.world_trace.add_object_state(new_os)
                     new_objects.append(new_os)
                     if debug:
-                        print("Added {0} to world trace in position [{1}, {2}, {3}] at timestamp {4}.".format(
-                            new_os.name, new_os.x, new_os.y, new_os.z, new_os.timestamp))
+                        print("Added {0} to world trace in position [{1}, {2}] at timestamp {4}.".format(
+                            new_os.name, new_os.x, new_os.y, new_os.timestamp))
             # Sends the new observations to the cognitive architecture
             self.cognition.tq.put(new_objects)
             self.last_timestep = current_timestep
@@ -196,13 +196,14 @@ class RobotAgent(Agent):
             target_position = target.getPosition()
             return target_position
 
-    def rotate(self, degrees, direction, speed=0.5):
+    def rotate(self, degrees, direction, speed=0.5, observe=True):
         """
         Rotates for a certain amount of degrees, left or right. Synchronous.
 
         :param degrees: objective degrees
         :param direction: 'left' or 'right'
         :param speed: float in (0.0, 1.0]
+        :param observe: if True, keeps observing the environment while rotating
         :return: None
         """
         direction = direction.upper()
@@ -222,8 +223,10 @@ class RobotAgent(Agent):
         self.motors['wheel_left'].setVelocity(0.0)
         self.motors['wheel_right'].setVelocity(0.0)
         initial = self.inertial.getRollPitchYaw()
-        rad = math.radians(degrees)
+        rad = math.radians(degrees)     # Objective rotation
         while self.step():
+            if observe:
+                self.update_world_knowledge(self.observe())
             current = self.inertial.getRollPitchYaw()
             if math.fabs(initial[2] - current[2]) < rad:
                 self.motors['wheel_left'].setVelocity(left_velocity)
@@ -263,9 +266,9 @@ class RobotAgent(Agent):
                 if math.fabs(new_position) > max_position:
                     new_position = 0.0
                     if error > 0:
-                        self.rotate(45, "left")
+                        self.rotate(10.0, "left", observe=True)
                     else:
-                        self.rotate(45, "right")
+                        self.rotate(10.0, "right", observe=True)
                 self.motors['head_1'].setPosition(new_position)
             break
 
@@ -277,16 +280,24 @@ class RobotAgent(Agent):
         :return: True if found, False if not found
         """
         degrees = 0
+        frames_no_target = 0    # Number of frames without a clear target (used to decide when to rotate and search)
         while self.step():
             # Observe the environment for the specific target
             objects = self.observe()
             self.update_world_knowledge(objects)
             target = self.get_object_from_set(target_name, objects)
             if target is None:
-                # If the target is not found, rotate 90° and keep searching
-                self.rotate(45, "right")
-                degrees += 90
+                frames_no_target += 1
+                print("No target, {0}".format(frames_no_target))
+                # This should refrain the robot from rotating if it looses sight of the human for just a moment, for
+                # example during a temporary occlusion.
+                if frames_no_target >= 100:
+                    frames_no_target = 0
+                    # If the target is not found, rotate 90° and keep searching
+                    self.rotate(45, "right")
+                    degrees += 90
             else:
+                frames_no_target = 0
                 return True     # The target is found
             if degrees >= 360:
                 # After a 360° turn, the target was not found, so it must not be in range
