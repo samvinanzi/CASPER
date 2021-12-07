@@ -11,7 +11,7 @@ class Episode:
         if humans is None:
             humans = {}
         # Sanity check
-        assert isinstance(time, int) and time >= 0, "Time must be a positive integer."
+        assert isinstance(time, int) and time >= 0, "Time must be a positive integer, provided: {0}".format(time)
         self.time = time
         self.humans = humans
 
@@ -180,7 +180,7 @@ class HumanFrame:
         if self.target:
             try:
                 of = self.objects[self.target]
-                return "[MOS: {0}, HOLD: {1}, QDC: {2}, QTC: {2}]".format(self.MOS, self.HOLD, of.QDC, of.QTC)
+                return "[MOS: {0}, HOLD: {1}, QDC: {2}, QTC: {3}]".format(self.MOS, self.HOLD, of.QDC, of.QTC)
             except KeyError:
                 return "[No data to display]"
         else:

@@ -42,12 +42,34 @@ class ObservationLibrary:
                 }
             }
 
-        def compute_qsr(self):
+        def compute_qsr(self, show=False):
+            def pretty_print_world_qsr_trace(qsrlib_response_message):
+                """
+                Just a print function.
+
+                :param qsrlib_response_message: QSRLib response message
+                :return: None
+                """
+                print(self.which_qsr, "request was made at ", str(qsrlib_response_message.req_made_at)
+                      + " and received at " + str(qsrlib_response_message.req_received_at)
+                      + " and finished at " + str(qsrlib_response_message.req_finished_at))
+                print("---")
+                print("Response is:")
+                for t in qsrlib_response_message.qsrs.get_sorted_timestamps():
+                    foo = str(t) + ": "
+                    for k, v in zip(qsrlib_response_message.qsrs.trace[t].qsrs.keys(),
+                                    qsrlib_response_message.qsrs.trace[t].qsrs.values()):
+                        foo += str(k) + ":" + str(v.qsr) + "; "
+                    print(foo)
+
             qsrlib_request_message = QSRlib_Request_Message(self.which_qsr, self.world_trace, dynamic_args=self.dynamic_args)
             qsrlib_response_message = self.qsrlib.request_qsrs(req_msg=qsrlib_request_message)
-            return qsrlib_response_message
+            if show:
+                pretty_print_world_qsr_trace(qsrlib_response_message)
+            return qsrlib_response_message, self.world_trace
 
-    def __init__(self):
+    def __init__(self, debug=False):
+        self.debug = debug
         self.qsr_parser = self.QSRParser()
         # Protected variables
         self.observations = []
@@ -69,10 +91,12 @@ class ObservationLibrary:
         :return: None
         """
         with self.observations_lock:
-            self.observations.append(observation)
+            self.observations.extend(observation)
+            if self.debug:
+                print("[OBSLIB] Producer inserted observation")
         self.observations_event.set()
 
-    def process_observations(self):
+    def process_observations(self, debug=True):
         """
         Thread that runs in background. As soon as new observartions are available, it produces a new set of QSRs and
         makes them available for the consumer.
@@ -81,18 +105,29 @@ class ObservationLibrary:
         """
         while True:
             # Wait for an observation to happen
+            if self.debug:
+                print("[OBSLIB] Waiting for a producer event...")
             self.observations_event.wait()
             # Retrieve all the data
             with self.observations_lock:
+                if self.debug:
+                    print("[OBSLIB] Producer event detected! Fetching observations.")
                 observations = self.observations
             self.observations_event.clear()
             # Calculate the QSRs
             self.qsr_parser.world_trace.add_object_state_series(observations)
-            qsr = self.qsr_parser.compute_qsr()
-            # Store the QSR library for the consumer
-            with self.qsr_lock:
-                self.qsr = qsr
-            self.qsr_event.set()
+            if not len(self.qsr_parser.world_trace.get_sorted_timestamps()) >= 2:
+                # At least 2 timestamps are required in order to calculate the QSRs
+                continue
+            else:
+                qsr = self.qsr_parser.compute_qsr(show=False)
+                # Store the QSR library for the consumer
+                with self.qsr_lock:
+                    if self.debug:
+                        print("[OBSLIB] Updating the QSR Library with timestamp {0}.".format(
+                            len(self.qsr_parser.world_trace.get_sorted_timestamps())))
+                    self.qsr = qsr
+                self.qsr_event.set()
 
     def retrieve_qsrs(self):
         """
@@ -101,6 +136,8 @@ class ObservationLibrary:
         :return: QRS response message
         """
         self.qsr_event.wait()
+        if self.debug:
+            print("[OBSLIB] Consumer accessing library.")
         with self.qsr_lock:
             qsr = self.qsr
         self.qsr_event.clear()

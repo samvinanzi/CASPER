@@ -71,6 +71,10 @@ class HumanAgent(Agent):
             [0.18, 0.09, 0.0, 0.09, 0.18, 0.09, 0.0, 0.09]  # head
         ]
 
+        # Resets the object held field (doesn't reset automatically between Webots executions)
+        object_held_field: Field = self.supervisor.getSelf().getField("heldObjectReference")
+        object_held_field.setSFInt32(0)
+
         print(str(self.__class__.__name__) + " has activated.")
 
     def get_robot_position(self):
@@ -329,7 +333,7 @@ class HumanAgent(Agent):
         :param show: If True, visualizes the calculated path.
         :return: Path as a list of coordinates, or None if not found.
         """
-        planner = RoboAStar(self.supervisor, current_map, delta=0.3, min_distance=0.2, goal_radius=0.6)
+        planner = RoboAStar(self.supervisor, current_map, delta=0.25, min_distance=0.2, goal_radius=0.6)
         start = self.get_robot_position()
         if self.debug:
             print("[PATH-PLANNING] From {0} to {1}. Searching...".format(start, goal))
@@ -671,19 +675,20 @@ class HumanAgent(Agent):
 
 def main():
     human = HumanAgent()
+
     speed = 2
     debug = False
 
     while human.step():
         #human.busy_waiting(3, label="STILL")    # Intro
         #human.pick_and_place('coca-cola', 'table(1)')
-        human.breakfast()
-        #human.lunch()
+        #human.breakfast()
+        human.lunch()
         #human.drink()
         #human.busy_waiting(-1, label="STILL")   # Outro
         break
 
 
 # Run this code to benchmark execution time
-# cProfile.run('main()', sort='time')
+#cProfile.run('main()', sort='time')
 main()

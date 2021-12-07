@@ -43,7 +43,7 @@ class LowLevel:
             "argd": {
                 "qsrs_for": qsrs_for,
                 #"qsrs_for": [("human", "coca-cola"), ("human", "table(1)")],
-                "qsr_relations_and_values": {"touch": 0.6, "near": 1, "medium": 3, "far": 5}
+                "qsr_relations_and_values": {"touch": 0.6, "near": 2, "medium": 3, "far": 5}
             },
             "qtcbs": {
                 "qsrs_for": qsrs_for,
@@ -197,18 +197,18 @@ class LowLevel:
     def test(self, debug=True):
         goal_found = False
         while not goal_found:
-            # Collect the latest observation
-            latest_timestamp = self.observe(1)
+            # Collect the latest QSRs calculated from the observation of the environment
+            qsr_response, self.world_trace = self.tq.retrieve_qsrs()
+            last_state = qsr_response.qsrs.get_last_state()
+            latest_timestamp = int(last_state.timestamp)
             if debug:
                 print("#----------- TIME {0} -----------#".format(latest_timestamp))
             # QSRs can be computed only if there are at least 2 timestamps in the world trace
-            if not len(self.world_trace.get_sorted_timestamps()) >= 3:      # We work with T-1 (see below)
+            if not len(self.world_trace.get_sorted_timestamps()) >= 2:      # We work with T-1 (see below)
                 if debug:
                     print("Not enough data, continuing to observe...")
                 continue
             else:
-                # Process it into a set of QSRs
-                qsr_response = self.compute_qsr()
                 factory = EpisodeFactory(self.world_trace, qsr_response)
                 # QTC is only calculated at step T-1, so we work with that one
                 episode = factory.build_episode(latest_timestamp-1)
@@ -222,6 +222,10 @@ class LowLevel:
                     objects_in_timestep = episode.get_objects_for("human")
                     for object in objects_in_timestep:
                         self.focus.add(object)
+                    # todo debug remove
+                    print(self.focus.print_probabilities())
+                    continue
+                    # todo debug end
                     if not self.focus.has_confident_prediction():
                         if debug:
                             print("No clear focus yet, observing...")

@@ -18,4 +18,5 @@ class ObservationQueue:
             self.queue.task_done()
             return item
         except QueueEmpty:
+            print("GET empty result")
             return None

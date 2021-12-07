@@ -43,7 +43,7 @@ class RobotAgent(Agent):
 
         # todo !
         self.cognition = CognitiveArchitecture(mode="TEST")
-        #self.cognition.start()
+        self.cognition.start()
         #self.world_trace = self.cognition.expose_world_trace()
         self.update_world_trace()
         # todo !
@@ -176,10 +176,11 @@ class RobotAgent(Agent):
                     #self.world_trace.add_object_state(new_os)
                     new_objects.append(new_os)
                     if debug:
-                        print("Added {0} to world trace in position [{1}, {2}] at timestamp {4}.".format(
+                        print("Added {0} to world trace in position [{1}, {2}] at timestamp {3}.".format(
                             new_os.name, new_os.x, new_os.y, new_os.timestamp))
             # Sends the new observations to the cognitive architecture
-            self.cognition.tq.put(new_objects)
+            #self.cognition.tq.put(new_objects)
+            self.cognition.tq.add_observation(new_objects)
             self.last_timestep = current_timestep
 
     def get_target_coordinates(self, target_name):
@@ -270,7 +271,7 @@ class RobotAgent(Agent):
                     else:
                         self.rotate(10.0, "right", observe=True)
                 self.motors['head_1'].setPosition(new_position)
-            break
+            #break
 
     def search_for(self, target_name):
         """

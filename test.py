@@ -114,12 +114,43 @@ print(pp.get_pickle(''))
 #k2 = maps.Kitchen2.Kitchen2()
 #k2.visualize()
 
-from path_planning.robot_astar import RoboAStar
+#from path_planning.robot_astar import RoboAStar
 
-planner = RoboAStar(self.supervisor, current_map, delta=0.3, min_distance=0.2, goal_radius=0.6)
+#planner = RoboAStar(self.supervisor, current_map, delta=0.3, min_distance=0.2, goal_radius=0.6)
 
+#from maps.Kitchen2 import Kitchen2
 
-show()
+#k2 = Kitchen2()
+#k2.see_free_space()
+
+#show()
+
+from cognitive_architecture.ObservationLibrary import ObservationQueue2
+
+oq2 = ObservationQueue2()
+
+def producer():
+    inputs = range(10)
+    for input in inputs:
+        print("[PRODUCER] Inserting {0}".format(input))
+        oq2.add_observation(input)
+        #time.sleep(1)
+
+def consumer():
+    while True:
+        data = oq2.retrieve_qsrs()
+        print("[CONSUMER] Read {0}".format(data))
+        time.sleep(2)
+
+import threading
+
+p = threading.Thread(target=producer)
+c = threading.Thread(target=consumer)
+
+p.start()
+c.start()
+p.join()
+c.join(timeout=5)
 
 print("\nDone")
 pass
