@@ -9,7 +9,7 @@ import math
 import pickle
 
 from Agent import Agent
-from controller import Field, InertialUnit, Motion
+from controller import Field, InertialUnit, Motion, Node
 import os
 from qsrlib.qsrlib import QSRlib, QSRlib_Request_Message
 from qsrlib_io.world_trace import Object_State
@@ -17,15 +17,8 @@ from cognitive_architecture.Episode import *
 from cognitive_architecture.CognitiveArchitecture import CognitiveArchitecture
 from util.PathProvider import path_provider
 
-BASEDIR = "..\..\..\..\THRIVE++"
-PICKLE_DIR = "data\pickle"
-MOTION_DIR = "motions"
-MOTION_EXT = ".motion"
 agents = ["HumanAgent"]                     # Humans and other robots will initially be unknown
 # Some environmental elements and the robot itself are not considered
-excluded = ["CircleArena", "myTiago++", "SolidBox", "Window", "Wall", "Cabinet", "Floor", "Ceiling", "Door",
-            "RoCKInShelf", "GM"]
-#included = ["coca-cola", "human", "table(1)"]
 included = ["human", "sink", "glass", "hobs", "biscuits", "meal", "plate", "bottle"]
 
 
@@ -44,7 +37,6 @@ class RobotAgent(Agent):
         # todo !
         self.cognition = CognitiveArchitecture(mode="TEST")
         self.cognition.start()
-        #self.world_trace = self.cognition.expose_world_trace()
         self.update_world_trace()
         # todo !
 
@@ -89,7 +81,6 @@ class RobotAgent(Agent):
         for name, node in self.all_nodes.items():
             node_type_name = node.getTypeName()  # Elements are filtered by type, not by name
             if name in included:
-            #if node_type_name not in excluded:
                 if node_type_name in agents:
                     position = None
                 else:
@@ -162,26 +153,43 @@ class RobotAgent(Agent):
                         # Adjustment for PICK action
                         if training_label == "PICK":
                             hold = False
-                    else:
-                        hold = None
-                        training_label = None
-                        training_target = None
-                    if name == "human":
+                        # Calculates the orientation vector, based on the human position and rotation
+                        ov = self.calculate_human_orientation_vector(name, (position[0], position[1]))
+                        # ObjectState insertion
                         new_os = Object_State(name=name, timestamp=current_timestep,
                                               x=position[0], y=position[2], hold=hold, label=training_label,
-                                              target=training_target)
+                                              target=training_target, ov=ov)
                     else:
-                        new_os = Object_State(name=name, timestamp=current_timestep,
-                                              x=position[0], y=position[2])
-                    #self.world_trace.add_object_state(new_os)
+                        new_os = Object_State(name=name, timestamp=current_timestep, x=position[0], y=position[2])
                     new_objects.append(new_os)
                     if debug:
                         print("Added {0} to world trace in position [{1}, {2}] at timestamp {3}.".format(
                             new_os.name, new_os.x, new_os.y, new_os.timestamp))
             # Sends the new observations to the cognitive architecture
-            #self.cognition.tq.put(new_objects)
             self.cognition.tq.add_observation(new_objects)
             self.last_timestep = current_timestep
+
+    def calculate_human_orientation_vector(self, human_name, human_position):
+        """
+        Calculates the orientation vector for a specific human
+
+        :param human_name: Name of the desired human, str
+        :param human_position: Tuple representing the (x,y) position of the human
+        :return np.array orientation vector
+        """
+        assert isinstance(human_name, str), "Must specify a string name to search for"
+        human: Node = self.all_nodes.get(human_name)
+        if human is None:
+            return None
+        R = np.array(human.getOrientation())
+        R = R.reshape(3, 3)
+        T = np.array([human_position[0], 1.27, human_position[1]])
+        p_local = np.array([0, 0, 1], dtype=float)
+        p_global = np.dot(R, p_local) + T
+        new_position = [round(p_global[0], 2), round(p_global[2], 2)]
+        dx = human_position[0] - new_position[0]
+        dy = human_position[1] - new_position[1]
+        return np.asarray([dx, dy])
 
     def get_target_coordinates(self, target_name):
         """
@@ -312,10 +320,9 @@ class RobotAgent(Agent):
         :param debug: Activates debug output
         :return: True if completed, False otherwise
         """
-        file = os.path.join(MOTION_DIR, motion_name)
-        file += MOTION_EXT
+        file = path_provider.get_robot_motion(motion_name)
         if os.path.exists(file) and os.path.isfile(file):
-            motion = Motion(file)
+            motion = Motion(str(file))
             if debug:
                 print("Loading motion: {0}".format(file))
             if motion.isValid():
@@ -337,75 +344,6 @@ class RobotAgent(Agent):
                 return False
         else:
             print("[ERROR] Invalid motion name: {0}".format(motion_name))
-
-    def compute_qsr_test(self):
-        # TODO experimental
-        which_qsr = ["argd", "qtcbs", "mos"]
-        dynamic_args = {
-            "argd": {
-                "qsrs_for": [("human", "coca-cola"), ("human", "table(1)")],
-                "qsr_relations_and_values": {"touch": 0.6, "near": 1, "medium": 3, "far": 5}
-            },
-            "qtcbs": {
-                "qsrs_for": [("human", "coca-cola"), ("human", "table(1)")],
-                "quantisation_factor": 0.01,
-                "validate": False,
-                "no_collapse": True
-            },
-            "mos": {
-                "qsr_for": ["human"],
-                "quantisation_factor": 0.09
-            }
-        }
-        qsrlib_request_message = QSRlib_Request_Message(which_qsr, self.world_trace, dynamic_args=dynamic_args)
-        qsrlib_response_message = self.qsrlib.request_qsrs(req_msg=qsrlib_request_message)
-        self.pretty_print_world_qsr_trace(which_qsr, qsrlib_response_message)
-        return qsrlib_response_message
-
-    def pretty_print_world_qsr_trace(self, which_qsr, qsrlib_response_message):
-        print(which_qsr, "request was made at ", str(qsrlib_response_message.req_made_at)
-              + " and received at " + str(qsrlib_response_message.req_received_at)
-              + " and finished at " + str(qsrlib_response_message.req_finished_at))
-        print("---")
-        print("Response is:")
-        for t in qsrlib_response_message.qsrs.get_sorted_timestamps():
-            foo = str(t) + ": "
-            for k, v in zip(qsrlib_response_message.qsrs.trace[t].qsrs.keys(),
-                            qsrlib_response_message.qsrs.trace[t].qsrs.values()):
-                foo += str(k) + ":" + str(v.qsr) + "; "
-            print(foo)
-
-    '''
-    def process_data(self, picklefile, label="UNKNOWN"):
-        file = os.path.join(BASEDIR, PICKLE_DIR, picklefile)
-        if os.path.isfile(file):
-            qsr_response = pickle.load(open(file, "rb"))
-            for t in qsr_response.qsrs.get_sorted_timestamps():
-                for k, v in zip(qsr_response.qsrs.trace[t].qsrs.keys(), qsr_response.qsrs.trace[t].qsrs.values()):
-                    print("{0} : {1}".format(k, v))
-        pass
-    '''
-
-    def process_data(self, qsr_response, current_timestamp=0):
-        # DEBUG:
-        #file = os.path.join(BASEDIR, PICKLE_DIR, 'qsr_response.p')
-        qsr_response = pickle.load(open(path_provider.get_pickle('qsr_response.p'), "rb"))
-        ep = Episode(time=current_timestamp)
-        # world_qsr.trace[4].qsrs['o1,o2'].qsr['rcc8']
-        trace = qsr_response.qsrs.trace[current_timestamp]
-        try:
-            human_trace = trace.qsrs['human']
-            hf = HumanFrame()
-            hf.MOS = human_trace.qsr['mos']
-            # Find the objects
-            k = trace.qsrs.keys()
-
-        except KeyError:
-            human_trace = None
-        for t in qsr_response.qsrs.get_sorted_timestamps():
-            for k, v in zip(qsr_response.qsrs.trace[t].qsrs.keys(), qsr_response.qsrs.trace[t].qsrs.values()):
-                pass
-
 
 
 # MAIN LOOP

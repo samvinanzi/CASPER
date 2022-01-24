@@ -92,7 +92,7 @@ class HumanAgent(Agent):
         :return: 3x3 rotation matrix
         """
         orientation = np.array(self.supervisor.getSelf().getOrientation())
-        orientation.reshape(3, 3)
+        orientation = orientation.reshape(3, 3)
         return orientation
 
     def get_in_hand_name(self):
@@ -670,6 +670,45 @@ class HumanAgent(Agent):
         self.pick_and_place("glass", "sink")
         self.use("glass", "sink")
 
+    def calculate_orientation_vector(self):
+        """
+        Calculates a point at distance = 1 from the human, taking into account its orientation in space.
+        """
+        human_position = self.get_robot_position()
+        R = self.get_robot_orientation()
+        T = np.array([human_position[0], 1.27, human_position[1]])
+        p_local = np.array([0, 0, 1], dtype=float)
+        p_global = np.dot(R, p_local) + T
+        new_position = [round(p_global[0], 2), round(p_global[2], 2)]
+        dx = human_position[0] - new_position[0]
+        dy = human_position[1] - new_position[1]
+        return np.asarray([dx, dy]), human_position
+
+    def angle_with(self, target_name: str, orientation_vector, human_position):
+        """
+        Calculates the angle between the human's orientation and a specified object.
+
+        :param target_name: The object of interest.
+        :param orientation_vector: The human's orientation vector, calculated previously.
+        :return Angle, in radians
+        """
+        assert isinstance(target_name, str), "Must specify a string name to search for"
+        target: Node = self.all_nodes.get(target_name)
+        if target is not None:
+            # Calculate the human-to-object vector
+            target_trans = target.getPosition()
+            object_position = np.asarray([target_trans[0], target_trans[2]])
+            dx = human_position[0] - object_position[0]
+            dy = human_position[1] - object_position[1]
+            object_vector = np.asarray([dx, dy])
+            unit_vector_1 = orientation_vector / np.linalg.norm(orientation_vector)
+            unit_vector_2 = object_vector / np.linalg.norm(object_vector)
+            dot_product = np.dot(unit_vector_1, unit_vector_2)
+            angle = np.arccos(dot_product)
+            angle_deg = round(math.degrees(angle))
+            return angle_deg
+
+
 
 # MAIN LOOP
 
@@ -684,6 +723,13 @@ def main():
         #human.pick_and_place('coca-cola', 'table(1)')
         #human.breakfast()
         human.lunch()
+        """
+        items = ["sink", "glass", "hobs", "biscuits", "meal", "plate", "bottle"]
+        ov, human_pos = human.calculate_orientation_vector()
+        for item in items:
+            angle = human.angle_with(item, ov, human_pos)
+            print("Angle with {0}: {1}°".format(item, angle))
+        """
         #human.drink()
         #human.busy_waiting(-1, label="STILL")   # Outro
         break

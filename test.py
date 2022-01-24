@@ -1,18 +1,13 @@
 import time
 
 import maps.Kitchen2
-from cognitive_architecture.FocusBelief import FocusBelief
-from cognitive_architecture.TreeTrainer import TreeTrainer
 import pickle
 import os
 import numpy as np
-from cognitive_architecture.Episode import Episode
-from cognitive_architecture.EpisodeFactory import EpisodeFactory
-from cognitive_architecture.MarkovFSM import ensemble
-from cognitive_architecture.HighLevel import HighLevel
-from cognitive_architecture.Bridge import Bridge
-from cognitive_architecture.InternalComms import InternalComms
 from cognitive_architecture import *
+from util.PathProvider import path_provider
+import pandas as pd
+import matplotlib.pyplot as plt
 
 '''
 factory = DataFrameFactory()
@@ -111,46 +106,20 @@ pp = PathProvider()
 print(pp.get_pickle(''))
 '''
 
-#k2 = maps.Kitchen2.Kitchen2()
-#k2.visualize()
+headers = ["time", "sink", "glass", "hobs", "biscuits", "meal", "plate", "bottle"]
+file = path_provider.get_csv("focus_belief.csv")
+for item in headers[1:]:
+    df = pd.read_csv(file, names=headers)
+    #df.set_index('time').plot()     # all
+    print("Plotting {0}".format(item))
+    df[["time", item]].set_index('time').plot()
+    plt.legend(loc="upper right")
+    plt.ylim(0, 1.0)
+    plt.savefig(path_provider.get_image("{0}.png".format(item)))
+    #plt.show()
 
-#from path_planning.robot_astar import RoboAStar
 
-#planner = RoboAStar(self.supervisor, current_map, delta=0.3, min_distance=0.2, goal_radius=0.6)
 
-#from maps.Kitchen2 import Kitchen2
-
-#k2 = Kitchen2()
-#k2.see_free_space()
-
-#show()
-
-from cognitive_architecture.ObservationLibrary import ObservationQueue2
-
-oq2 = ObservationQueue2()
-
-def producer():
-    inputs = range(10)
-    for input in inputs:
-        print("[PRODUCER] Inserting {0}".format(input))
-        oq2.add_observation(input)
-        #time.sleep(1)
-
-def consumer():
-    while True:
-        data = oq2.retrieve_qsrs()
-        print("[CONSUMER] Read {0}".format(data))
-        time.sleep(2)
-
-import threading
-
-p = threading.Thread(target=producer)
-c = threading.Thread(target=consumer)
-
-p.start()
-c.start()
-p.join()
-c.join(timeout=5)
 
 print("\nDone")
 pass

@@ -4,7 +4,6 @@ Acts as a bridge between the low and high levels of the cognitive architecture.
 
 import xml.etree.ElementTree as ET
 import pandas as pd
-from pathlib import Path
 from util.PathProvider import path_provider
 
 #BASEDIR = basedir = Path(__file__).parent.parent

@@ -12,6 +12,8 @@ class PathProvider:
         self.BASEDIR = Path(__file__).parent.parent
         self.CONFIG = (self.BASEDIR / 'config').resolve()
         self.DATA = (self.BASEDIR / 'data').resolve()
+        self.IMG = (self.BASEDIR / 'img').resolve()
+        self.MOTION = (self.BASEDIR / 'webots' / 'controllers' / 'RobotAgent' / 'motions').resolve()
 
     def get_domain(self, filename):
         return (self.DATA / 'CRADLE' / filename).resolve()
@@ -27,6 +29,15 @@ class PathProvider:
 
     def get_pickle(self, filename):
         return (self.DATA / 'pickle' / filename).resolve()
+
+    def get_csv(self, filename):
+        return (self.DATA / 'csv' / filename).resolve()
+
+    def get_image(self, filename):
+        return (self.IMG / filename).resolve()
+
+    def get_robot_motion(self, filename):
+        return (self.MOTION / filename).with_suffix('.motion').resolve()
 
 
 path_provider = PathProvider()

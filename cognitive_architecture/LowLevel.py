@@ -3,7 +3,6 @@ Low-Level cognitive architecture (from QSR to contextualized actions)
 """
 
 from cognitive_architecture.FocusBelief import FocusBelief
-from cognitive_architecture.ObservationQueue import ObservationQueue
 from qsrlib.qsrlib import QSRlib, QSRlib_Request_Message
 from qsrlib_io.world_trace import World_Trace
 import pickle
@@ -16,6 +15,8 @@ from cognitive_architecture.Bridge import Bridge
 from cognitive_architecture.InternalComms import InternalComms
 import time
 from util.PathProvider import path_provider
+import numpy as np
+import math
 
 BASEDIR = basedir = Path(__file__).parent.parent
 PICKLE_DIR = "data/pickle"
@@ -42,12 +43,10 @@ class LowLevel:
         self.dynamic_args = {
             "argd": {
                 "qsrs_for": qsrs_for,
-                #"qsrs_for": [("human", "coca-cola"), ("human", "table(1)")],
                 "qsr_relations_and_values": {"touch": 0.6, "near": 2, "medium": 3, "far": 5}
             },
             "qtcbs": {
                 "qsrs_for": qsrs_for,
-                #"qsrs_for": [("human", "coca-cola"), ("human", "table(1)")],
                 "quantisation_factor": 0.01,
                 "validate": False,
                 "no_collapse": True
@@ -64,7 +63,6 @@ class LowLevel:
 
         :return: None
         """
-        #path = (BASEDIR / SAVE_DIR / "tree.p").resolve()
         pickle.dump(self.tree, open(path_provider.get_save('tree.p'), "wb"))
 
     def load(self):
@@ -73,11 +71,11 @@ class LowLevel:
 
         :return: None
         """
-        #path = (BASEDIR / SAVE_DIR / "tree.p").resolve()
         self.tree = pickle.load(open(path_provider.get_save('tree.p'), "rb"))
 
     def observe(self, to_observe=float('inf')):
         """
+        DEPRECATED. Observations are now done through ObervationLibrary.
         Observes a certain number of timesteps, collects the ObjectStates and adds them to the world trace.
 
         :param to_observe: number of timesteps to observe
@@ -98,6 +96,7 @@ class LowLevel:
 
     def compute_qsr(self, save_id=None, show=False):
         """
+        DEPRECATED. QSRs are now obtained directly from ObservationLibrary.
         Computes the QSR from the world trace.
 
         :param save_id: id of the training sub-set.
@@ -224,6 +223,8 @@ class LowLevel:
                         self.focus.add(object)
                     # todo debug remove
                     print(self.focus.print_probabilities())
+                    print("Saving focus logs for timestamp {0}".format(latest_timestamp))
+                    self.focus.save_probabilities(latest_timestamp)
                     continue
                     # todo debug end
                     if not self.focus.has_confident_prediction():

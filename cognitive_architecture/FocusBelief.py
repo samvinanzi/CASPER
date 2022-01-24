@@ -5,10 +5,12 @@ Models the robot's belief on the human's focus.
 from cognitive_architecture.Episode import ObjectFrame
 import matplotlib.pyplot as plt
 import threading
+from util.PathProvider import path_provider
+import csv
 
 
 class FocusBelief:
-    def __init__(self, human_name, w_qdc=1, w_qtc=1):
+    def __init__(self, human_name, w_qdc=.8, w_qtc=.2):
         self.name = human_name
         self.w_qdc = w_qdc
         self.w_qtc = w_qtc
@@ -26,6 +28,14 @@ class FocusBelief:
             '-': .25,
             '0': .5
         }
+        self.target = None
+        self.destination = None
+        self.target_window = []
+        self.destination_window = []
+        self.log = path_provider.get_csv('focus_belief.csv')
+        # Empties the contents of the log file
+        with open(self.log, 'w'):
+            pass
 
     def get_object_names(self):
         """
@@ -43,7 +53,7 @@ class FocusBelief:
         :return: probability in [0.0, 1.0]
         """
         assert isinstance(object, ObjectFrame), "Parameter must be of type ObjectFrame"
-        return self.w_qdc * self.qdc_map[object.QDC] + self.w_qtc * self.qtc_map[object.QTC]
+        return (self.w_qdc * self.qdc_map[object.QDC] + self.w_qtc * self.qtc_map[object.QTC]) / (1 + object.theta)
 
     def normalize_all(self):
         """
@@ -71,7 +81,7 @@ class FocusBelief:
             for key in self.raw_values.keys():
                 self.raw_values[key] = 1.0 / n
 
-    def add(self, object, show=True):
+    def add(self, object):
         """
         Adds an object to the set.
 
@@ -89,9 +99,22 @@ class FocusBelief:
 
         :return: None
         """
+
         for key, value in self.normalized_probabilities.items():
-            print("{0}: {1}%".format(key, value*100.0))
+            print("{0}: {1}%".format(key, round(value*100.0, 2)))
         print("\n#-------#")
+
+    def save_probabilities(self, timestep):
+        """
+        Saves the current probabilities.
+
+        :param timestep: current timestep
+        """
+        with open(self.log, 'a') as f:
+            writer = csv.writer(f)
+            row = list(self.normalized_probabilities.values())
+            row.insert(0, timestep)
+            writer.writerow(row)
 
     def get_ranked_probabilities(self):
         """
@@ -154,3 +177,9 @@ class FocusBelief:
         plt.ylabel("Probability")
         plt.title("Focus belief")
         plt.show()
+
+    def get_top_element_if_exists(self):
+        ranked_prob = self.get_ranked_probabilities()
+        # Verifies if there is a single winner
+        if not list(ranked_prob.values())[0] == list(ranked_prob.values())[1]:
+            return list(ranked_prob.values())[0]

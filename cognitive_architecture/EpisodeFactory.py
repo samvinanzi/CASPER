@@ -7,6 +7,7 @@ import pickle
 import numpy as np
 import csv
 import pandas as pd
+import math
 from sklearn.preprocessing import LabelEncoder
 from cognitive_architecture.Episode import *
 
@@ -77,6 +78,9 @@ class EpisodeFactory:
             human_trace = trace_at_timestep.qsrs['human']
             # Initialize a human frame for the current timestamp
             hf = HumanFrame('human')
+            hf.x = self.world_trace.trace[current_timestamp].objects['human'].x
+            hf.y = self.world_trace.trace[current_timestamp].objects['human'].y
+            hf.ov = self.world_trace.trace[current_timestamp].objects['human'].kwargs['ov']
             hf.MOS = human_trace.qsr['mos'].upper()
             hf.HOLD = self.world_trace.trace[current_timestamp].objects['human'].kwargs['hold']
             label = self.world_trace.trace[current_timestamp].objects['human'].kwargs['label']
@@ -96,8 +100,19 @@ class EpisodeFactory:
                     # Adjustments
                     qdc = qdc.upper()
                     qtc = qtc[0]
+                    x = self.world_trace.trace[current_timestamp].objects[object_name].x
+                    y = self.world_trace.trace[current_timestamp].objects[object_name].y
+                    # Calculate the orientation angle wrt the human
+                    object_vector = np.asarray([hf.x - x, hf.y - y])
+                    unit_vector_1 = hf.ov / np.linalg.norm(hf.ov)
+                    unit_vector_2 = object_vector / np.linalg.norm(object_vector)
+                    dot_product = np.dot(unit_vector_1, unit_vector_2)
+                    try:
+                        angle = round(math.degrees(np.arccos(dot_product)))
+                    except ValueError:
+                        angle = 0.0     # This happens when an object is held, i.e. when it shares the human's position
                     # Create an object frame for this human-object couple
-                    of = ObjectFrame(object_name, qdc, qtc)
+                    of = ObjectFrame(object_name, qdc, qtc, x=x, y=y, theta=angle)
                     if target == object_name:
                         of.label = label
                     hf.objects[object_name] = of
@@ -110,6 +125,27 @@ class EpisodeFactory:
             return None
         self.episodes.append(ep)
         return ep
+
+    def angle_with(self, object, orientation_vector, human_position):
+        """
+        Calculates the angle between the human's orientation and a specified object.
+
+        :param object: ObjectFrame of interest
+        :param orientation_vector: The human's orientation vector, calculated previously.
+        :param human_position list with the [x,y] position of the human
+        :return Angle, in degrees
+        """
+        # Calculate the human-to-object vector
+        object_position = np.asarray([object.x, object.y])
+        dx = human_position[0] - object_position[0]
+        dy = human_position[1] - object_position[1]
+        object_vector = np.asarray([dx, dy])
+        unit_vector_1 = orientation_vector / np.linalg.norm(orientation_vector)
+        unit_vector_2 = object_vector / np.linalg.norm(object_vector)
+        dot_product = np.dot(unit_vector_1, unit_vector_2)
+        angle = np.arccos(dot_product)
+        angle_deg = round(math.degrees(angle))
+        return angle_deg
 
     def get_episode_at_timestamp(self, timestamp):
         """

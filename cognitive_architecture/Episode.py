@@ -56,7 +56,7 @@ class Episode:
 
 
 class HumanFrame:
-    def __init__(self, name, mos='s', hold=False, objects=None, target=None, fallback_label=None):
+    def __init__(self, name, mos='s', hold=False, objects=None, target=None, fallback_label=None, x=0, y=0, ov=0.0):
         if objects is None:
             objects = {}
         # Sanity checks
@@ -69,6 +69,9 @@ class HumanFrame:
         self.objects = objects
         self.target = target
         self.fallback_label = fallback_label
+        self.x = x
+        self.y = y
+        self.ov = ov
 
     def is_stationary(self):
         """
@@ -176,11 +179,19 @@ class HumanFrame:
         else:
             return self.fallback_label
 
+    def get_position(self):
+        """
+        Returns the (x,y) coordinate.
+
+        :return: Coordinate list [x,y]
+        """
+        return [self.x, self.y]
+
     def __str__(self):
         if self.target:
             try:
                 of = self.objects[self.target]
-                return "[MOS: {0}, HOLD: {1}, QDC: {2}, QTC: {3}]".format(self.MOS, self.HOLD, of.QDC, of.QTC)
+                return "[MOS: {0}, HOLD: {1}, QDC: {2}, QTC: {3}], ov = {4}".format(self.MOS, self.HOLD, of.QDC, of.QTC, self.ov)
             except KeyError:
                 return "[No data to display]"
         else:
@@ -188,7 +199,7 @@ class HumanFrame:
 
 
 class ObjectFrame:
-    def __init__(self, name, qdc, qtc, label=None):
+    def __init__(self, name, qdc, qtc, label=None, x=0, y=0, theta=0):
         # Sanity checks
         assert isinstance(qdc, str), "QDC must be of type string."
         assert qtc in ['-', '0', '+'], "QTC must be one of -, 0 or +, as string."
@@ -196,6 +207,9 @@ class ObjectFrame:
         self.QDC = qdc.upper()
         self.QTC = qtc
         self.label = label
+        self.x = x
+        self.y = y
+        self.theta = theta
 
     def __str__(self):
-        return "{0}: QDC: {1}, QTC: {2}".format(self.name, self.QDC, self.QTC)
+        return "{0}: QDC: {1}, QTC: {2}, angle: {3}".format(self.name, self.QDC, self.QTC, self.theta)
