@@ -7,13 +7,79 @@ import matplotlib.pyplot as plt
 import threading
 from util.PathProvider import path_provider
 import csv
+from queue import Queue
+from collections import Counter
+
+
+class Window:
+    """
+    This class models a sliding window.
+    """
+    def __init__(self, size=4, score=3):
+        assert score < size, "Score must be less than the window size."
+        self.items = Queue(maxsize=size)     # FIFO queue
+        self.score = score
+        self.most_recent_winner = None
+
+    def add(self, item):
+        """
+        Adds an item to the window
+
+        @param item: item to insert
+        """
+        if self.items.full():
+            self.items.get()
+        self.items.put(item)
+
+    def get_items(self):
+        """
+        Returns the elements inside the window.
+
+        @return: list of elements
+        """
+        return list(self.items.queue)
+
+    def check_winner(self):
+        """
+        Checks if one of the items is recurring at least Score times.
+
+        @return: True or False
+        """
+        if self.items.empty():
+            return False
+        c = Counter(self.get_items())
+        item, frequency = c.most_common(1)[0]
+        if frequency >= self.score:
+            self.most_recent_winner = item
+            return True
+        else:
+            return False
+
+    def contains_winner(self, item_list):
+        """
+        Checks if one of the items supplied as a parameters is the one that has already been designed as a winner.
+
+        @param item_list: List of item names
+        @return: Winner (if present) and list of remaining items
+        """
+        if self.most_recent_winner in item_list:
+            return self.most_recent_winner, [item for item in item_list if item != self.most_recent_winner]
+        else:
+            return None, item_list
 
 
 class FocusBelief:
-    def __init__(self, human_name, w_qdc=.8, w_qtc=.2):
+    class FocusItem:
+        def __init__(self, name, p):
+            self.name = name
+            self.p = p
+
+    def __init__(self, human_name, w_qdc=.8, w_qtc=.2, threshold=.5, epsilon=.05):
         self.name = human_name
         self.w_qdc = w_qdc
         self.w_qtc = w_qtc
+        self.threshold = threshold
+        self.epsilon = epsilon
         self.raw_values = {}     # Non-normalized in [0, 1]
         self.normalized_probabilities = {}
         # Probability mapping
@@ -30,8 +96,8 @@ class FocusBelief:
         }
         self.target = None
         self.destination = None
-        self.target_window = []
-        self.destination_window = []
+        self.target_window = Window()
+        self.destination_window = Window(size=3, score=2)
         self.log = path_provider.get_csv('focus_belief.csv')
         # Empties the contents of the log file
         with open(self.log, 'w'):
@@ -89,9 +155,9 @@ class FocusBelief:
         :return: None
         """
         p = self.p(object)
-        print("{0} ==> {1}".format(object,p))
+        #print("{0} ==> {1}".format(object,p))
         self.raw_values[object.name] = p
-        self.normalize_all()
+        #self.normalize_all()
 
     def print_probabilities(self):
         """
@@ -120,66 +186,93 @@ class FocusBelief:
         """
         Sorts the objects based on their probability.
 
-        :return: Ordered dictionary, with most probable items on the top.
+        :return: List of tuples (object, probability), ordered from the highest to the lowest probability.
         """
-        return {k: v for k, v in sorted(self.normalized_probabilities.items(), key=lambda item: item[1], reverse=True)}
+        d = {k: v for k, v in sorted(self.normalized_probabilities.items(), key=lambda item: item[1], reverse=True)}
+        return list(d.items())
 
     def get_top_n_items(self, n=0):
         """
         Returns the top N items of the ranked probabilities. When n=0, returns everything (equivalent to
-        get_ranked_probabilities()).
+        get_ranked_probabilities()). If more items are requested than the number of items available, it will still
+        fulfill the request by appending (None, 0.0) values to the returned list.
 
         :param n: Number of elements to return
         :return: Top N ranked probabilities
         """
         assert n >= 0, "Requirement: n >= 0."
         ranked_prob = self.get_ranked_probabilities()
-        if n == 0:
-            return ranked_prob
+        if n == 0:      # No limit it set: let's return all the results
+            output = ranked_prob
+        elif n > len(ranked_prob):  # More items have been requested than the ones available: fill in the missing data
+            extension = []
+            missing = (None, 0.0)
+            missing_no = n - len(ranked_prob)
+            for i in range(missing_no):
+                extension.append(missing)
+            output = ranked_prob.extend(extension)
+        else:       # Return exactly the first N items
+            output = ranked_prob[:n]
+        return [self.FocusItem(x[0], x[1]) for x in output]
+
+    def process_iteration(self):
+        """
+        After having accepted all the objects for the current iteration, it normalizes the probabilities and calculates
+        the existence of a clear winner of the focus estimation.
+
+        @return: None
+        """
+        self.normalize_all()
+        top_items = self.get_top_n_items(n=3)
+        item1 = top_items[0]
+        item2 = top_items[1]
+        item3 = top_items[2]    # The third item is used only to verify if the second is actually dominant
+        if item1.p == item2.p == item3.p:
+            # Three ties: can't really tell what's going on
+            # If there is already a recorded target, keep it, otherwise ignore
+            if self.target is not None:
+                item_list = [item1.name, item2.name, item3.name]
+                target, non_targets = self.target_window.contains_winner(item_list)
+                # The previously defined target should remain so
+                self.target_window.add(target)
+                for non_target in non_targets:
+                    # Add the remaining items as destination candidates
+                    self.destination_window.add(non_target)
+        elif item1.p == item2.p:
+            # Tie between first and second ranked elements
+            # If there is already a recorded target then keep it, otherwise add them to the window
+            if self.target is not None:
+                item_list = [item1.name, item2.name]
+                target, non_target = self.target_window.contains_winner(item_list)
+                # The previously defined target should remain so
+                self.target_window.add(target)
+                # Add the remaining item as destination candidates
+                self.destination_window.add(non_target[0])
+            else:
+                # If there is still no clear winner, add them both to the competition
+                self.target_window.add(item1.name)
+                self.target_window.add(item2.name)
+                # Maybe the third elements can shed light on the destination?
+                self.destination_window.add(item3.name)
         else:
-            return dict(list(ranked_prob.items())[:n])
+            # No tie. First element is dominant, second is a possible destination, third is ignored
+            if item1.p >= self.threshold - self.epsilon:
+                # These elements are recorded only if the highest ranking surpasses the threshold
+                self.target_window.add(item1.name)
+                self.destination_window.add(item2.name)
+        # At this point, check if there are clear winners for target and destination
+        if self.target_window.check_winner():
+            self.target = self.target_window.most_recent_winner
+        if self.destination_window.check_winner():
+            self.destination = self.destination_window.most_recent_winner
+        # Sanity check: I can't have a destination without a target
+        if self.target is None:
+            self.destination = None
 
-    def has_confident_prediction(self, threshold=.7):
+    def get_winners_if_exist(self):
         """
-        Determines if there is one confident prediction.
+        Returns the predicted target and destination, if available.
 
-        :return: True or False.
+        @return: target, destination (names, can be None)
         """
-        assert .5 < threshold <= 1.0, "Threshold should be at least .51, max 1.0"
-        top_item = self.get_top_n_items(1)
-        if list(top_item.values())[0] >= threshold:
-            return True
-        else:
-            return False
-
-    def show(self):
-        """
-        Launches show_thread in parallel.
-
-        :return: None
-        """
-        th = threading.Thread(target=self.show_thread)
-        th.start()
-
-    def show_thread(self):
-        """
-        Plots the focus belief levels in a bar graph. Can be computationally expensive somehow, so parallelize it.
-
-        :return: None
-        """
-        objects = []
-        probs = []
-        for object, prob in self.normalized_probabilities.items():
-            objects.append(object)
-            probs.append(prob)
-        plt.bar(objects, probs, color='maroon', width=0.4)
-        plt.xlabel("Objects")
-        plt.ylabel("Probability")
-        plt.title("Focus belief")
-        plt.show()
-
-    def get_top_element_if_exists(self):
-        ranked_prob = self.get_ranked_probabilities()
-        # Verifies if there is a single winner
-        if not list(ranked_prob.values())[0] == list(ranked_prob.values())[1]:
-            return list(ranked_prob.values())[0]
+        return self.target, self.destination

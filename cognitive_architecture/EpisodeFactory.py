@@ -11,6 +11,8 @@ import math
 from sklearn.preprocessing import LabelEncoder
 from cognitive_architecture.Episode import *
 
+np.seterr(divide='ignore', invalid='ignore')    # Suppresses the RuntimeWarning error on a handled divide-by-zero case
+
 PICKLE_DIR = "data\pickle"
 CSV_DIR = "data\csv"
 
@@ -104,12 +106,12 @@ class EpisodeFactory:
                     y = self.world_trace.trace[current_timestamp].objects[object_name].y
                     # Calculate the orientation angle wrt the human
                     object_vector = np.asarray([hf.x - x, hf.y - y])
-                    unit_vector_1 = hf.ov / np.linalg.norm(hf.ov)
-                    unit_vector_2 = object_vector / np.linalg.norm(object_vector)
-                    dot_product = np.dot(unit_vector_1, unit_vector_2)
                     try:
+                        unit_vector_1 = hf.ov / np.linalg.norm(hf.ov)
+                        unit_vector_2 = object_vector / np.linalg.norm(object_vector)
+                        dot_product = np.dot(unit_vector_1, unit_vector_2)
                         angle = round(math.degrees(np.arccos(dot_product)))
-                    except ValueError:
+                    except (ValueError, RuntimeError):
                         angle = 0.0     # This happens when an object is held, i.e. when it shares the human's position
                     # Create an object frame for this human-object couple
                     of = ObjectFrame(object_name, qdc, qtc, x=x, y=y, theta=angle)
@@ -140,11 +142,14 @@ class EpisodeFactory:
         dx = human_position[0] - object_position[0]
         dy = human_position[1] - object_position[1]
         object_vector = np.asarray([dx, dy])
-        unit_vector_1 = orientation_vector / np.linalg.norm(orientation_vector)
-        unit_vector_2 = object_vector / np.linalg.norm(object_vector)
-        dot_product = np.dot(unit_vector_1, unit_vector_2)
-        angle = np.arccos(dot_product)
-        angle_deg = round(math.degrees(angle))
+        try:
+            unit_vector_1 = orientation_vector / np.linalg.norm(orientation_vector)
+            unit_vector_2 = object_vector / np.linalg.norm(object_vector)
+            dot_product = np.dot(unit_vector_1, unit_vector_2)
+            angle = np.arccos(dot_product)
+            angle_deg = round(math.degrees(angle))
+        except RuntimeError:
+            angle_deg = 0.0
         return angle_deg
 
     def get_episode_at_timestamp(self, timestamp):

@@ -7,6 +7,7 @@ By providing the consumer with the global set of QSRs, instead of the newest obs
 two entities is addressed.
 """
 
+import time
 from qsrlib.qsrlib import QSRlib, QSRlib_Request_Message
 from qsrlib_io.world_trace import World_Trace
 from threading import Thread, Event, Lock
@@ -43,6 +44,12 @@ class ObservationLibrary:
             }
 
         def compute_qsr(self, show=False):
+            """
+            Computes the world_trace to produce a set of QSRs.
+
+            @param show: If True, prints the results on screen.
+            @return: qsrlib_response_message, world_trace
+            """
             def pretty_print_world_qsr_trace(qsrlib_response_message):
                 """
                 Just a print function.
@@ -67,6 +74,22 @@ class ObservationLibrary:
             if show:
                 pretty_print_world_qsr_trace(qsrlib_response_message)
             return qsrlib_response_message, self.world_trace
+
+        def trim(self, critical_size=10):
+            """
+            The size of world_trace can grow eccessively, significantly impacting the computation time. For this reason,
+            we decide to trim the lower-end of the world_trace to keep things running smoothly.
+            In any case, the cognitive architecture always processes the results of the very last QSRs.
+
+            @param critical_size: size at which to start trimming.
+            @return: None
+            """
+            trace_length = len(self.world_trace.get_sorted_timestamps())
+            if trace_length > critical_size:
+                last_state = self.world_trace.get_last_state()
+                latest_timestamp = int(last_state.timestamp)
+                trimming_point = int(critical_size / 2)
+                self.world_trace = self.world_trace.get_at_timestamp_range(start=latest_timestamp-trimming_point)
 
     def __init__(self, debug=False):
         self.debug = debug
@@ -120,6 +143,7 @@ class ObservationLibrary:
                 # At least 2 timestamps are required in order to calculate the QSRs
                 continue
             else:
+                self.qsr_parser.trim()
                 qsr = self.qsr_parser.compute_qsr(show=False)
                 # Store the QSR library for the consumer
                 with self.qsr_lock:

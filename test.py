@@ -8,6 +8,8 @@ from cognitive_architecture import *
 from util.PathProvider import path_provider
 import pandas as pd
 import matplotlib.pyplot as plt
+from cognitive_architecture.FocusBelief import FocusBelief
+
 
 '''
 factory = DataFrameFactory()
@@ -106,19 +108,45 @@ pp = PathProvider()
 print(pp.get_pickle(''))
 '''
 
-headers = ["time", "sink", "glass", "hobs", "biscuits", "meal", "plate", "bottle"]
-file = path_provider.get_csv("focus_belief.csv")
-for item in headers[1:]:
+
+def plot_focus():
+    plt.gcf().set_dpi(300)
+    headers = ["time", "sink", "glass", "hobs", "biscuits", "meal", "plate", "bottle"]
+    file = path_provider.get_csv("focus_belief.csv")
     df = pd.read_csv(file, names=headers)
-    #df.set_index('time').plot()     # all
-    print("Plotting {0}".format(item))
-    df[["time", item]].set_index('time').plot()
-    plt.legend(loc="upper right")
-    plt.ylim(0, 1.0)
-    plt.savefig(path_provider.get_image("{0}.png".format(item)))
-    #plt.show()
+    for item in headers[1:]:
+        print("Plotting {0}".format(item))
+        df[["time", item]].set_index('time').plot()
+        # Plot styling
+        plt.legend(loc="upper right")
+        plt.ylim(0, 1.0)
+        plt.axhline(y=0.5, color='r', linestyle='dashed')
+        # Data plotting
+        plt.savefig(path_provider.get_image("{0}.png".format(item)))
 
 
+
+"""
+FOCUS SIMULATOR
+
+
+focus = FocusBelief("simulator")
+headers = ["time", "sink", "glass", "hobs", "biscuits", "meal", "plate", "bottle"]
+file = path_provider.get_csv("test_focus.csv")
+df = pd.read_csv(file, names=headers)
+df = df.reset_index()
+for index, row in df.iterrows():
+    print("#----------- TIME {0} -----------#".format(row['time']))
+    for header in headers[1:]:
+        focus.raw_values[header] = row[header]  # Simulates a focus.add()
+    focus.process_iteration()
+    focus.print_probabilities()
+    target, destination = focus.get_winners_if_exist()
+    print("Target: {0}\nDestination: {1}".format(target, destination))
+    #input("\nPress Enter to continue...")
+"""
+
+plot_focus()
 
 
 print("\nDone")

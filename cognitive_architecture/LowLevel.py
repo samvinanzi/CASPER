@@ -198,6 +198,7 @@ class LowLevel:
         while not goal_found:
             # Collect the latest QSRs calculated from the observation of the environment
             qsr_response, self.world_trace = self.tq.retrieve_qsrs()
+
             last_state = qsr_response.qsrs.get_last_state()
             latest_timestamp = int(last_state.timestamp)
             if debug:
@@ -211,7 +212,7 @@ class LowLevel:
                 factory = EpisodeFactory(self.world_trace, qsr_response)
                 # QTC is only calculated at step T-1, so we work with that one
                 episode = factory.build_episode(latest_timestamp-1)
-                print("Episode: {0}".format(episode))
+                #print("Episode: {0}".format(episode))
                 if episode is None:
                     if debug:
                         print("No human found in this frame. Continuing to observe...")
@@ -222,16 +223,23 @@ class LowLevel:
                     for object in objects_in_timestep:
                         self.focus.add(object)
                     # todo debug remove
-                    print(self.focus.print_probabilities())
+                    #print(self.focus.print_probabilities())
                     print("Saving focus logs for timestamp {0}".format(latest_timestamp))
                     self.focus.save_probabilities(latest_timestamp)
-                    continue
+                    #continue
                     # todo debug end
-                    if not self.focus.has_confident_prediction():
+                    #if not self.focus.has_confident_prediction():
+                    self.focus.process_iteration()
+                    target, destination = self.focus.get_winners_if_exist()
+                    if not target:
                         if debug:
                             print("No clear focus yet, observing...")
                         continue    # If no confident focus predictions were made, we need to observe more
                     else:
+                        # todo DEBUG REMOVE
+                        print("Target: {0}\nDestination: {1}".format(target, destination))
+                        continue
+                        # todo DEBUG END
                         # We have a target: add it to the episode and generate a feature
                         target = self.focus.get_top_n_items(1)
                         target_name, target_score = list(target.items())[0]
