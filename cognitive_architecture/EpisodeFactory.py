@@ -9,9 +9,7 @@ import csv
 import pandas as pd
 import math
 from sklearn.preprocessing import LabelEncoder
-from cognitive_architecture.Episode import *
-
-np.seterr(divide='ignore', invalid='ignore')    # Suppresses the RuntimeWarning error on a handled divide-by-zero case
+from cognitive_architecture.Episode import Episode, HumanFrame, ObjectFrame
 
 PICKLE_DIR = "data\pickle"
 CSV_DIR = "data\csv"
@@ -108,10 +106,13 @@ class EpisodeFactory:
                     object_vector = np.asarray([hf.x - x, hf.y - y])
                     try:
                         unit_vector_1 = hf.ov / np.linalg.norm(hf.ov)
-                        unit_vector_2 = object_vector / np.linalg.norm(object_vector)
+                        norm2 = np.linalg.norm(object_vector)
+                        # Suppresses the RuntimeWarning error on a handled divide-by-zero case
+                        with np.errstate(invalid='ignore', divide='ignore'):
+                            unit_vector_2 = object_vector / norm2
                         dot_product = np.dot(unit_vector_1, unit_vector_2)
                         angle = round(math.degrees(np.arccos(dot_product)))
-                    except (ValueError, RuntimeError):
+                    except (ValueError, RuntimeWarning):
                         angle = 0.0     # This happens when an object is held, i.e. when it shares the human's position
                     # Create an object frame for this human-object couple
                     of = ObjectFrame(object_name, qdc, qtc, x=x, y=y, theta=angle)
