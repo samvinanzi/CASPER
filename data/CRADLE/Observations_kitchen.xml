@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='ISO-8859-1'?>
+<Observations>
+	<Observation id="pnp">
+		<Param name="item" val="meal" />
+		<Param name="destination" val="hobs" />
+	</Observation>
+	<Observation id="cook">
+		<Param name="food" val="meal" />
+	</Observation>
+</Observations>

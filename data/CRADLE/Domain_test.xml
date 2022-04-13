@@ -1,0 +1,60 @@
+<?xml version="1.0"?>
+<PL> 
+	<Letters>
+		<NonTerminals>
+			<Letter goal="yes" name="Goal 1" id="G1">
+				<Params>
+					<Param name="name"/>
+				</Params>
+			</Letter>
+			<Letter goal="yes" name="Goal 2" id="G2">
+				<Params>
+					<Param name="name"/>
+				</Params>
+			</Letter>
+		</NonTerminals>
+		<Terminals>
+			<Letter goal="no" name="action 1" id="a1">
+				<Params>
+					<Param name="type"/>
+				</Params>
+			</Letter>
+			<Letter goal="no" name="action 2" id="a2">
+				<Params>
+					<Param name="type"/>
+				</Params>
+			</Letter>
+			<Letter goal="no" name="action 2" id="a3">
+				<Params>
+					<Param name="type"/>
+				</Params>
+			</Letter>
+		</Terminals>
+	</Letters>
+	
+	<Recipes>
+		<Recipe lhs="G1" desc="How to get goal 1">
+			<Order>
+				<OrderCons firstIndex="1" secondIndex="2"/>
+			</Order>
+			<Equals>
+				<EqualCons firstIndex="1" firstParam="type" secondIndex="2" secondParam="type"/>
+				<EqualCons firstIndex="0" firstParam="name" secondIndex="1" secondParam="type"/>
+			</Equals>
+			<Letter id="a1" index="1"/>
+			<Letter id="a3" index="2"/>
+		</Recipe>
+		
+		<Recipe lhs="G2" desc="How to get goal 2">
+			<Order>
+				<OrderCons firstIndex="1" secondIndex="2"/>
+			</Order>
+			<Equals>
+				<EqualCons firstIndex="1" firstParam="type" secondIndex="2" secondParam="type"/>
+				<EqualCons firstIndex="0" firstParam="name" secondIndex="1" secondParam="type"/>
+			</Equals>
+			<Letter id="a1" index="1"/>
+			<Letter id="a2" index="2"/>
+		</Recipe>
+	</Recipes>
+</PL>

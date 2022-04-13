@@ -1,0 +1,44 @@
+#VRML_SIM R2021a utf8
+WorldInfo {
+  info [
+    "Pedestrian Simulation"
+  ]
+  title "Autonomous Vehicle"
+  ERP 0.6
+  basicTimeStep 10
+  coordinateSystem "NUE"
+  lineScale 1
+  contactProperties [
+    ContactProperties {
+      softCFM 0.0003
+    }
+  ]
+}
+Viewpoint {
+  orientation -1 0 0 1.5707963267948966
+  position 6.236771202736938e-15 27.37584402679017 1.0946980535824366e-15
+  near 1
+}
+TexturedBackground {
+}
+TexturedBackgroundLight {
+}
+CircleArena {
+  radius 10
+  floorAppearance Parquetry {
+  }
+  floorTileSize 2 2
+  wallThickness 0.1
+  wallHeight 1
+}
+myTiago++ {
+  rotation -0.5773509358554485 0.5773509358554485 0.5773489358556708 2.0944
+  supervisor TRUE
+}
+HumanAgent {
+  translation 6.07356 1.27 -0.215767
+}
+Table {
+  translation 8.13697 0 -4.22184
+  rotation 0 1 0 -1.047195307179586
+}

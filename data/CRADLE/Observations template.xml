@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<Observations>
+	<Observation id="sm">
+		<Param name="sid" val="4" />
+	</Observation>
+</Observations>
+

@@ -14,6 +14,7 @@ class PathProvider:
         self.DATA = (self.BASEDIR / 'data').resolve()
         self.IMG = (self.BASEDIR / 'img').resolve()
         self.MOTION = (self.BASEDIR / 'webots' / 'controllers' / 'RobotAgent' / 'motions').resolve()
+        self.ONTO = (self.BASEDIR / 'ontology').resolve()
 
     def get_domain(self, filename):
         return (self.DATA / 'CRADLE' / filename).resolve()
@@ -38,6 +39,9 @@ class PathProvider:
 
     def get_robot_motion(self, filename):
         return (self.MOTION / filename).with_suffix('.motion').resolve()
+
+    def get_ontology(self, filename):
+        return str((self.ONTO / filename).with_suffix('.owl').resolve())    # Owlready can't handle PosixPath apparently
 
 
 path_provider = PathProvider()

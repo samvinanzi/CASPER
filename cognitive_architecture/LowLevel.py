@@ -13,10 +13,10 @@ from cognitive_architecture.MarkovFSM import ensemble
 from cognitive_architecture.Contextualizer import Contextualizer
 from cognitive_architecture.Bridge import Bridge
 from cognitive_architecture.InternalComms import InternalComms
+from cognitive_architecture.KnowledgeBase import KnowledgeBase, Statement
 import time
 from util.PathProvider import path_provider
-import numpy as np
-import math
+from cognitive_architecture.ObservationLibrary import ObservationLibrary
 
 BASEDIR = basedir = Path(__file__).parent.parent
 PICKLE_DIR = "data/pickle"
@@ -24,8 +24,8 @@ SAVE_DIR = "data/cognition"
 
 
 class LowLevel:
-    def __init__(self, tq, internal_comms):
-        self.tq = tq
+    def __init__(self, internal_comms):
+        self.tq = ObservationLibrary()
         self.internal_comms: InternalComms = internal_comms
         self.bridge: Bridge = Bridge()
         self.world_trace: World_Trace = World_Trace()
@@ -193,16 +193,16 @@ class LowLevel:
         trainer = TreeTrainer()
         return trainer.k_fold_cross_validation(min, max)
 
-    def test(self, debug=True):
+    def test(self, debug=False, save_focus=False):
         goal_found = False
+        latest_prediction_time = None
+        kb = KnowledgeBase('kitchen_onto')
         while not goal_found:
             # Collect the latest QSRs calculated from the observation of the environment
             qsr_response, self.world_trace = self.tq.retrieve_qsrs()
-
             last_state = qsr_response.qsrs.get_last_state()
             latest_timestamp = int(last_state.timestamp)
-            if debug:
-                print("#----------- TIME {0} -----------#".format(latest_timestamp))
+            print("#----------- TIME {0} -----------#".format(latest_timestamp))
             # QSRs can be computed only if there are at least 2 timestamps in the world trace
             if not len(self.world_trace.get_sorted_timestamps()) >= 2:      # We work with T-1 (see below)
                 if debug:
@@ -212,7 +212,6 @@ class LowLevel:
                 factory = EpisodeFactory(self.world_trace, qsr_response)
                 # QTC is only calculated at step T-1, so we work with that one
                 episode = factory.build_episode(latest_timestamp-1)
-                #print("Episode: {0}".format(episode))
                 if episode is None:
                     if debug:
                         print("No human found in this frame. Continuing to observe...")
@@ -222,13 +221,9 @@ class LowLevel:
                     objects_in_timestep = episode.get_objects_for("human")
                     for object in objects_in_timestep:
                         self.focus.add(object)
-                    # todo debug remove
-                    #print(self.focus.print_probabilities())
-                    print("Saving focus logs for timestamp {0}".format(latest_timestamp))
-                    self.focus.save_probabilities(latest_timestamp)
-                    #continue
-                    # todo debug end
-                    #if not self.focus.has_confident_prediction():
+                    if save_focus:
+                        print("Saving focus logs for timestamp {0}".format(latest_timestamp))
+                        self.focus.save_probabilities(latest_timestamp)
                     self.focus.process_iteration()
                     target, destination = self.focus.get_winners_if_exist()
                     if not target:
@@ -236,51 +231,53 @@ class LowLevel:
                             print("No clear focus yet, observing...")
                         continue    # If no confident focus predictions were made, we need to observe more
                     else:
-                        # todo DEBUG REMOVE
-                        print("Target: {0}\nDestination: {1}".format(target, destination))
-                        continue
-                        # todo DEBUG END
+                        print("FOCUS: target: {0}, destination: {1}".format(target, destination))
                         # We have a target: add it to the episode and generate a feature
-                        target = self.focus.get_top_n_items(1)
-                        target_name, target_score = list(target.items())[0]
-                        if debug:
-                            print("Target identified: {0} ({1}%)".format(target_name, target_score))
-                        episode.humans["human"].target = target_name
+                        episode.humans["human"].target = target
                         feature = episode.to_feature(human="human", train=False)
                         # Classify the target's set of QSRs into a Movement
                         movement = self.tree.predict(feature)[0]
-                        if debug:
-                            print("Predicted movement: {0}".format(movement))
-                        # Add the Movement to the markovian finite-state machine to predict a temporal Action
-                        ensemble.add_observation(movement)
-                        action, score, winner = ensemble.best_model()
-                        if debug:
-                            print("Best action fit: {0} ({1}). Winner... {2}".format(action, score, winner))
+                        print("MOVEMENT: {0}".format(movement))
+                        # Add the Movement to the Markovian finite-state machine to predict a temporal Action
+                        if not latest_prediction_time or latest_timestamp - latest_prediction_time > 2: # testing this
+                            ensemble.add_observation(movement)
+                        action, score, winner = ensemble.best_model()   # Try to predict an Action
                         if not winner:
+                            if debug:
+                                print("No action prediction. Candidates: {0} with scores: {1}".format(action, score))
                             continue    # More data is needed
                         else:
-                            #ensemble.empty_observations()   # Reset the observations
+                            latest_prediction_time = latest_timestamp
+                            ensemble.empty_observations()   # Reset the observations
                             # Contextualize the Action
-                            contextualizer = Contextualizer()
+                            ctx = Contextualizer()
                             # The second item of the focus is the destination
-                            context = list(self.focus.get_top_n_items(2))[1]
-                            ca = contextualizer.give_context(action, context)
-                            if debug:
-                                print("{0} was contextualized in {1}".format(action, ca))
+                            ca = ctx.give_context(action, destination)
+                            print("ACTION: {0} {1} {2}".format(ca, target, destination))
+                            # VERIFICATION
+                            statement = Statement("human", ca, target, destination)
+                            print(statement)
+                            if not kb.verify_statement(statement):
+                                print("INCONSISTENT")
+                                continue
+                            print("CONSISTENT")
                             # Retrieve the format of that action
                             data = self.bridge.retrieve_data(ca)
                             if data is None:
                                 continue
-                            params = self.focus.get_top_n_items(data.number_of_parameters())
-                            if debug:
-                                print("Parameters for action {0} are: {1}".format(ca, params))
+                            if data.number_of_parameters() == 1:
+                                params = [target]
+                            else:
+                                params = [target, destination]
                             self.bridge.append_observation(data, params)    # Writes the observation XML
-                            # Signal the high level
+                            # Signal the high level to check the observations file
                             self.internal_comms.put(True)
-                            time.sleep(.2)  # Gives HL time to fetch the data and detect a new goal
-                            # Try to predict the overall plan
+                            # Gives HL time to fetch the data and detect a new goal
+                            time.sleep(1)  # todo more time?
+                            # Check if a goal was found
                             goal, frontier = self.internal_comms.get_goal()
-                            if goal:
+                            if goal is not None:
+                                print("GOAL: {0}\n\nFrontier: {1}".format(goal, frontier))
                                 goal_found = True  # Exit condition
-                    # Collaborate
-                    print("END! Robot will collaborate by executing {0}".format(frontier[0]))   # todo placeholder
+        # Collaborate
+        # todo

@@ -97,7 +97,7 @@ class FocusBelief:
         self.target = None
         self.destination = None
         self.target_window = Window()
-        self.destination_window = Window(size=3, score=2)
+        self.destination_window = Window(size=5, score=3)
         self.log = path_provider.get_csv('focus_belief.csv')
         # Empties the contents of the log file
         with open(self.log, 'w'):
@@ -259,7 +259,8 @@ class FocusBelief:
             if item1.p >= self.threshold - self.epsilon:
                 # These elements are recorded only if the highest ranking surpasses the threshold
                 self.target_window.add(item1.name)
-                self.destination_window.add(item2.name)
+                if item2.p > 0.05:
+                    self.destination_window.add(item2.name)
         # At this point, check if there are clear winners for target and destination
         if self.target_window.check_winner():
             self.target = self.target_window.most_recent_winner

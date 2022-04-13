@@ -8,7 +8,7 @@ class Contextualizer:
         self.lut = {
             'USE': {
                 'SINK': 'WASH',
-                'HOB': 'COOK',
+                'HOBS': 'COOK',
                 'PLATE': 'EAT',
                 'BOTTLE': 'SIP'
             }

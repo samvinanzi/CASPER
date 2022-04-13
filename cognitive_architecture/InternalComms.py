@@ -38,7 +38,7 @@ class InternalComms:
 
     # Writes the inferred goal name
     def write_goal(self, name, frontier):
-        assert name is not None, "invalid goal name"
+        #assert name is not None, "invalid goal name"
         with self.lock:
             self.goal_name = name
             self.frontier = frontier

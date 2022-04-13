@@ -98,7 +98,7 @@ class PL(object):
                         childRecursion = recursive
                         #Make sure you're not entering a possibly infinite loop (Left recursion bounding)
                         if childRule._A == rule._A:
-                            if childRecursion < 1:
+                            if childRecursion < 5:      # REUTH-EDIT
                                 childRecursion += 1
                             else:
                                 return trees

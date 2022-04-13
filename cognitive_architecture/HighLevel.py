@@ -6,8 +6,6 @@ This class incorporates and uses code from CRADLE (https://github.com/ReuthMirsk
 import copy
 import sys
 import xml.etree.ElementTree as ET
-import os
-from pathlib import Path
 from cognitive_architecture.StopThread import StopThread
 from CRADLE.Algorithm import ExplainAndCompute
 from CRADLE.Sigma import Sigma, NT
@@ -85,14 +83,24 @@ class HighLevel(StopThread):
         """
         if len(exps) > 2:
             print("Too many possibilities, I'm not sure...")
+            return None, None
         else:
             exp: Explanation = None
-            if len(exps) > 1:
-                probs = [exp.getExpProbability() for exp in exps]
-                if probs[1] == probs[2]:
-                    exp = random.choice(probs)  # If two equally probable explanation, pick one at random
+            if len(exps) == 1:
+                exp = exps[0]   # There is only one explanation
             else:
-                exp = exps[0]
+                probs = [exp.getExpProbability() for exp in exps]
+                if probs[0] == probs[1]:
+                    return None, None   # Tie between two choices, can't give an answer
+                else:
+                    # Pick the explanation with highest probability
+                    pass    # todo
+            #if len(exps) > 1:
+            #    probs = [exp.getExpProbability() for exp in exps]
+            #    if probs[0] == probs[1]:
+            #        exp = random.choice(probs)  # If two equally probable explanation, pick one at random
+            #else:
+            #    exp = exps[0]
             # Extract data from the most probable explanation
             goal_node = exp.getTrees()[0].getRoot()
             goal = goal_node._ch
@@ -116,11 +124,20 @@ class HighLevel(StopThread):
             else:   # An observation was appended
                 self.use_observation_file(path_provider.get_observations())    # Recalculate observations from the file
                 exps = self.explain(debug=False)    # try to explain them
+                if self.debug:
+                    print("[HL] Possible explanations:\n{0}".format(exps))
                 if exps is not None:
                     goal, frontier = self.parse_explanations(exps)
-                    self.internal_comms.write_goal((goal, frontier))   # Report the goal to the low-level
-                    # At this point, it must stop executing
-                    self.stop()
+                    # Report the findings back to the low-level
+                    self.internal_comms.write_goal(goal, frontier)
+                    if goal:
+                        if self.debug:
+                            print("[HL] Goal detected! {0}".format(goal))
+                        # At this point, it must stop executing
+                        self.stop()     # todo sure?
+                else:
+                    # todo How to act when no explanation can describe the observations?
+                    pass
 
 
 

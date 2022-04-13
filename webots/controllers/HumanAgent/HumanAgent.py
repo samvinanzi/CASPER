@@ -650,25 +650,46 @@ class HumanAgent(Agent):
 
     # GOALS #
 
-    def breakfast(self):
+    def breakfast(self, with_collab=False):
+        """
+        Enact the goal: "make breakfast".
+
+        @param with_collab: if True, the human will expect the robot to collaborate
+        @return: None
+        """
         self.pick_and_place("biscuits", "plate")
         self.use("biscuits", "plate")
-        self.pick_and_place("plate", "sink")
-        self.use("plate", "sink")
+        if not with_collab:
+            self.pick_and_place("plate", "sink")
+            self.use("plate", "sink")
 
-    def lunch(self):
+    def lunch(self, with_collab=False):
+        """
+        Enact the goal: "have lunch".
+
+        @param with_collab: if True, the human will expect the robot to collaborate
+        @return: None
+        """
         self.pick_and_place("meal", "hobs")
         self.use("meal", "hobs")
         self.pick_and_place("meal", "plate")
         self.use("meal", "plate")
-        self.pick_and_place("plate", "sink")
-        self.use("plate", "sink")
+        if not with_collab:
+            self.pick_and_place("plate", "sink")
+            self.use("plate", "sink")
 
-    def drink(self):
+    def drink(self, with_collab=False):
+        """
+        Enact the goal: "drink some water".
+
+        @param with_collab: if True, the human will expect the robot to collaborate
+        @return: None
+        """
         self.pick_and_place("bottle", "worktop(4)")
         self.use("glass", "bottle")
-        self.pick_and_place("glass", "sink")
-        self.use("glass", "sink")
+        if not with_collab:
+            self.pick_and_place("glass", "sink")
+            self.use("glass", "sink")
 
     def calculate_orientation_vector(self):
         """
@@ -709,29 +730,16 @@ class HumanAgent(Agent):
             return angle_deg
 
 
-
 # MAIN LOOP
 
 def main():
     human = HumanAgent()
-
-    speed = 2
-    debug = False
-
     while human.step():
-        #human.busy_waiting(3, label="STILL")    # Intro
-        #human.pick_and_place('coca-cola', 'table(1)')
-        #human.breakfast()
-        human.lunch()
-        """
-        items = ["sink", "glass", "hobs", "biscuits", "meal", "plate", "bottle"]
-        ov, human_pos = human.calculate_orientation_vector()
-        for item in items:
-            angle = human.angle_with(item, ov, human_pos)
-            print("Angle with {0}: {1}°".format(item, angle))
-        """
-        #human.drink()
-        #human.busy_waiting(-1, label="STILL")   # Outro
+        human.busy_waiting(1, label="STILL")    # Intro
+        #human.breakfast(with_collab=True)
+        human.lunch(with_collab=True)
+        #human.drink(with_collab=True)
+        human.busy_waiting(-1, label="STILL")   # Outro
         break
 
 

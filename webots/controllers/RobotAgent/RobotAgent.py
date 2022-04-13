@@ -166,7 +166,7 @@ class RobotAgent(Agent):
                         print("Added {0} to world trace in position [{1}, {2}] at timestamp {3}.".format(
                             new_os.name, new_os.x, new_os.y, new_os.timestamp))
             # Sends the new observations to the cognitive architecture
-            self.cognition.tq.add_observation(new_objects)
+            self.cognition.lowlevel.tq.add_observation(new_objects)
             self.last_timestep = current_timestep
 
     def calculate_human_orientation_vector(self, human_name, human_position):

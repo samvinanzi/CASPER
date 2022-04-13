@@ -1,0 +1,164 @@
+<?xml version="1.0"?>
+<PL> 
+	<Letters>
+		<NonTerminals>
+			<!-- GOALS -->
+			<Letter goal="yes" name="Breakfast" id="BREAKFAST">
+				<Params>
+					<Param name="food"/>
+				</Params>
+			</Letter>
+			<Letter goal="yes" name="Lunch" id="LUNCH">
+				<Params>
+					<Param name="food"/>
+				</Params>
+			</Letter>
+			<Letter goal="yes" name="Drink" id="DRINK">
+				<Params>
+					<Param name="beverage"/>
+				</Params>
+			</Letter>
+			
+			<!-- NON GOALS -->
+			<Letter goal="no" name="Set up table" id="SET_TABLE">
+				<Params>
+					<Param fake="True"/>
+				</Params>
+			</Letter>
+			<Letter goal="no" name="Prepare meal" id="PREPARE_MEAL">
+				<Params>
+					<Param name="food"/>
+				</Params>
+			</Letter>
+			<Letter goal="no" name="Warm food" id="WARM">
+				<Params>
+					<Param name="food"/>
+				</Params>
+			</Letter>
+			<Letter goal="no" name="Clean" id="CLEAN">
+				<Params>
+					<Param name="item"/>
+				</Params>
+			</Letter>	
+		</NonTerminals>
+		
+		<Terminals>
+			<Letter goal="no" name="Pick and place" id="pnp">
+				<Params>
+					<Param name="item"/>
+					<Param name="destination"/>
+				</Params>
+			</Letter>
+			<Letter goal="no" name="Eat" id="eat">
+				<Params>
+					<Param name="food"/>
+				</Params>
+			</Letter>
+			<Letter goal="no" name="Take a sip" id="sip">
+				<Params>
+					<Param name="beverage"/>
+				</Params>
+			</Letter>
+			<Letter goal="no" name="Wash" id="wash">
+				<Params>
+					<Param name="item"/>
+				</Params>
+			</Letter>
+			<Letter goal="no" name="Cook" id="cook">
+				<Params>
+					<Param name="food"/>
+				</Params>
+			</Letter>
+		</Terminals>
+	</Letters>
+	
+	<Recipes>
+		<!-- GOAL RECIPES -->
+		<Recipe lhs="BREAKFAST" desc="Have breakfast">
+			<Order>
+				<OrderCons firstIndex="1" secondIndex="2"/>
+				<OrderCons firstIndex="2" secondIndex="3"/>
+			</Order>
+			<Letter id="pnp" index="1"/>
+			<Letter id="eat" index="2"/>
+			<Letter id="CLEAN" index="3"/>
+			<Equals>
+				<EqualCons firstIndex="1" firstParam="item" secondIndex="2" secondParam="food"/>
+				<EqualCons firstIndex="1" firstParam="destination" secondIndex="3" secondParam="item"/>
+				<EqualCons firstIndex="0" firstParam="food" secondIndex="1" secondParam="item"/>
+			</Equals>
+		</Recipe>
+		<Recipe lhs="LUNCH" desc="Have lunch">
+			<Order>
+				<OrderCons firstIndex="1" secondIndex="2"/>
+				<OrderCons firstIndex="2" secondIndex="3"/>
+				<OrderCons firstIndex="3" secondIndex="4"/>
+			</Order>
+			<Letter id="SET_TABLE" index="1"/>
+			<Letter id="PREPARE_MEAL" index="2"/>
+			<Letter id="eat" index="3"/>
+			<Letter id="CLEAN" index="4"/>
+			<Equals>
+				<EqualCons firstIndex="2" firstParam="food" secondIndex="3" secondParam="food"/>
+				<EqualCons firstIndex="0" firstParam="food" secondIndex="2" secondParam="food"/>
+			</Equals>
+		</Recipe>
+		<Recipe lhs="DRINK" desc="Have a drink">
+			<Order>
+				<OrderCons firstIndex="1" secondIndex="2"/>
+				<OrderCons firstIndex="2" secondIndex="3"/>
+			</Order>
+			<Letter id="pnp" index="1"/>
+			<Letter id="sip" index="2"/>
+			<Letter id="CLEAN" index="3"/>
+			<Equals>
+				<EqualCons firstIndex="1" firstParam="destination" secondIndex="2" secondParam="beverage"/>
+				<EqualCons firstIndex="2" firstParam="beverage" secondIndex="3" secondParam="item"/>
+				<EqualCons firstIndex="0" firstParam="beverage" secondIndex="1" secondParam="item"/>
+			</Equals>
+		</Recipe>
+		
+		<!-- NON-GOAL RECIPES -->
+		<Recipe lhs="SET_TABLE" desc="Set the table">
+			<!-- order not needed? -->
+			<Letter id="pnp" index="1"/>
+			<Letter id="pnp" index="2"/>
+			<Equals>
+				<EqualCons firstIndex="1" firstParam="destination" secondIndex="2" secondParam="destination"/>
+			</Equals>
+		</Recipe>
+		<Recipe lhs="PREPARE_MEAL" desc="Prepare a warm meal">
+			<Order>
+				<OrderCons firstIndex="1" secondIndex="2"/>
+			</Order>
+			<Letter id="WARM" index="1"/>
+			<Letter id="pnp" index="2"/>
+			<Equals>
+				<EqualCons firstIndex="1" firstParam="food" secondIndex="2" secondParam="item"/>
+				<EqualCons firstIndex="0" firstParam="food" secondIndex="1" secondParam="food"/>
+			</Equals>
+		</Recipe>
+		<Recipe lhs="WARM" desc="Warms some food on the hobs">
+			<Order>
+				<OrderCons firstIndex="1" secondIndex="2"/>
+			</Order>
+			<Letter id="pnp" index="1"/>
+			<Letter id="cook" index="2"/>
+			<Equals>
+				<EqualCons firstIndex="1" firstParam="item" secondIndex="2" secondParam="food"/>
+				<EqualCons firstIndex="0" firstParam="food" secondIndex="1" secondParam="item"/>
+			</Equals>
+		</Recipe>
+		<Recipe lhs="CLEAN" desc="Washes the dishes">
+			<Order>
+				<OrderCons firstIndex="1" secondIndex="2"/>
+			</Order>
+			<Letter id="pnp" index="1"/>
+			<Letter id="wash" index="2"/>
+			<Equals>
+				<EqualCons firstIndex="1" firstParam="item" secondIndex="2" secondParam="item"/>
+				<EqualCons firstIndex="0" firstParam="item" secondIndex="1" secondParam="item"/>
+			</Equals>
+		</Recipe>	
+	</Recipes>
+</PL>

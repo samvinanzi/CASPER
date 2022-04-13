@@ -1,0 +1,11 @@
+Webots Proto Cache File version 1.5
+protoFileHash: 345be692b8fb5a30f444174ba3239edb
+needsRobotAncestor: 1
+baseType: Robot
+slotType: 
+parameters: translation,rotation,name,controller,controllerArgs,customData,supervisor,synchronization,selfCollision,cameraSlot,endEffectorRightSlot,endEffectorLeftSlot,lidarSlot
+tags: 
+license:  Apache License 2.0.
+licenseUrl:  http://www.apache.org/licenses/LICENSE-2.0.
+documentationUrl: https://www.cyberbotics.com/doc/guide/tiago++
+info: TIAGo++\srobot\sfrom\sPAL\sRobotics.\nThe\srobot\sis\scomposed\sby\sthe\sTIAGo\sbase\sand\sa\sbody\swith\stwo\sarms\sequipped\swith\sparallel\sgrippers.\sMy\sversion,\swith\scameras\senabled.\n

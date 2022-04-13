@@ -1,5 +1,6 @@
 import time
 
+import cognitive_architecture.MarkovFSM
 import maps.Kitchen2
 import pickle
 import os
@@ -9,6 +10,8 @@ from util.PathProvider import path_provider
 import pandas as pd
 import matplotlib.pyplot as plt
 from cognitive_architecture.FocusBelief import FocusBelief
+from owlready2 import *
+from cognitive_architecture.KnowledgeBase import Statement, KnowledgeBase
 
 
 '''
@@ -146,7 +149,55 @@ for index, row in df.iterrows():
     #input("\nPress Enter to continue...")
 """
 
-plot_focus()
+"""
+# CRADLE-TEST
+
+from cognitive_architecture.InternalComms import InternalComms
+from cognitive_architecture.HighLevel import HighLevel
+from util.PathProvider import path_provider
+
+DOMAIN = path_provider.get_domain("Domain_kitchen_corrected.xml")
+OBSERVATIONS = path_provider.get_domain("Observations_example.xml")
+#OBSERVATIONS = path_provider.get_observations()
+
+internal_comms = InternalComms()
+highlevel = HighLevel(internal_comms, DOMAIN, OBSERVATIONS, debug=True)
+
+exps = highlevel.explain()
+
+print(exps)
+"""
+
+"""
+# ONTOLOGY-TEST
+
+onto = get_ontology('/home/samuele/Research/Ontologies/kitchen_onto.owl').load()
+print("{0} PICK AND PLACE {1} {2}".format(onto.human, onto.human.pnp_target, onto.human.pnp_destination))
+
+# This is inconsistent: a robot can't eat!
+onto.tiago.eat_target = onto.meal
+onto.tiago.eat_destination = onto.plate
+
+try:
+    sync_reasoner_pellet()
+    print("Ontology consistent!")
+except OwlReadyInconsistentOntologyError:
+    print("Ontology inconsistent...")
+
+# Removes the problem
+onto.tiago.eat_target = None
+onto.tiago.eat_destination = None
+
+try:
+    sync_reasoner_pellet()
+    print("Ontology consistent!")
+except OwlReadyInconsistentOntologyError:
+    print("Ontology inconsistent...")
+"""
+
+onto = KnowledgeBase('kitchen_onto')
+s = Statement("human", "COOK", "meal", "hobs")
+onto.verify_statement(s, debug=True)
 
 
 print("\nDone")

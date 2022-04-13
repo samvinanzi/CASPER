@@ -5,11 +5,9 @@ Cognitive Architecture
 from cognitive_architecture.LowLevel import LowLevel
 from cognitive_architecture.HighLevel import HighLevel
 from threading import Thread
-from cognitive_architecture.ObservationLibrary import ObservationLibrary
 from cognitive_architecture.InternalComms import InternalComms
-from cognitive_architecture.Bridge import Bridge
 
-DOMAIN_FILE = "Domain_kitchen.xml"
+DOMAIN_FILE = "Domain_kitchen_corrected.xml"
 
 
 class CognitiveArchitecture(Thread):
@@ -18,10 +16,8 @@ class CognitiveArchitecture(Thread):
         assert self.mode == "TRAIN" or mode == "TEST", "mode accepts parameters 'train' or 'test'."
         Thread.__init__(self)
         self.internal_comms = InternalComms()
-        #self.tq = ObservationQueue()
-        self.tq = ObservationLibrary()
-        self.lowlevel = LowLevel(self.tq, self.internal_comms) # todo tq only inside LowLevel?
-        self.highlevel = HighLevel(self.internal_comms, DOMAIN_FILE)    # No observations are provided on startup
+        self.lowlevel = LowLevel(self.internal_comms)
+        self.highlevel = HighLevel(self.internal_comms, DOMAIN_FILE, debug=True)    # No observations given on startup
 
     def is_trainingmode(self):
         return True if self.mode == "TRAIN" else False

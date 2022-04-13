@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<Observations>
+	
+	
+	<Observation id="a1">
+		<Param name="type" val="Samuele"/>
+	</Observation>
+	
+	<Observation id="a2">
+		<Param name="type" val="Crefeda"/>
+	</Observation>
+	
+
+</Observations>

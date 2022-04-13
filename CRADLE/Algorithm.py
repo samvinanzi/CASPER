@@ -80,12 +80,12 @@ def ExplainAndCompute(PL, observations):
                 FrontierMax = currentExpFrontier
             
             #Filter this explanation if is exceeds the threshold of some filter
-            if currentExpSize > TreeAvgBound:
-                continue
-            if currentExpAge > AgeAvg:
-                continue
-            if currentExpFrontier > FrontierAvg:
-                continue
+            #if currentExpSize > TreeAvgBound:
+            #    continue
+            #if currentExpAge > AgeAvg:
+            #    continue
+            #if currentExpFrontier > FrontierAvg:
+            #    continue
            
             treeIndexInExp = 0
             #Consider all the existing plans the observation could extend
@@ -113,10 +113,11 @@ def ExplainAndCompute(PL, observations):
 
                     #Try to complete the frontier by expanding the tree from this point
                     #First, create all trees that start in the frontier item and ends with obs
-                    try:
+                    try:    # MY-CODE. Is this try-catch block correct?
                         genSetForObs = PL.generatingSetForObs(deepcopy(allGeneratingSet[node.getRoot().get()]), obs)
                     except KeyError:
                         continue
+                    #genSetForObs = PL.generatingSetForObs(deepcopy(allGeneratingSet[node.getRoot().get()]), obs)
                     #Then, try to see if the new sub-tree can be inserted instead of the frontier item
                     for newExpandedTree in genSetForObs:
                         if tree.sameParameters(newExpandedTree.getRoot(), index):
