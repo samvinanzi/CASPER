@@ -13,11 +13,40 @@ from CRADLE.Rule import Rule
 import CRADLE.PL as PL
 import CRADLE.Explanation as Explanation
 from cognitive_architecture.InternalComms import InternalComms
-import random
+from cognitive_architecture.KnowledgeBase import kb, GoalStatement
 from util.PathProvider import path_provider
 
 DATA_DIR = "data/CRADLE"
 OBSERVATIONS_FILE = "Observations.xml"
+
+
+class Goal:
+    def __init__(self, name=None, probability=0.0, param=None, frontier=None):
+        self.name = name
+        self.probability = probability
+        self.param = param
+        self.frontier = frontier
+        self.exp = None     # Saves the explanation from which it derived
+
+    def parse_from_explanation(self, exp: Explanation):
+        self.exp = exp
+        goal_node = exp.getTrees()[0].getRoot()
+        self.name = goal_node._ch
+        self.param = goal_node._params
+        frontier = exp.getTrees()[0].getFrontier()
+        self.frontier = [s.getRoot() for s in frontier]
+        self.probability = exp.getExpProbability()
+
+    def to_goal_statement(self):
+        # todo this assumes the existence of only one human, has to be changed in the future
+        return GoalStatement("human", self.name, self.param[0][1])
+
+    def validate(self):
+        return kb.verify_goal(self.to_goal_statement())
+
+    def __str__(self):
+        return "Goal: {0} with parameters {1} (probability {2}).\nFrontier: {3}".format(
+            self.name, self.param, self.probability, self.frontier)
 
 
 class HighLevel(StopThread):

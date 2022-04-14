@@ -1,8 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <module type="PYTHON_MODULE" version="4">
   <component name="NewModuleRootManager">
-    <content url="file://C:/Program Files/Webots/lib/controller/python39">
-      <sourceFolder url="file://C:/Program Files/Webots/lib/controller/python39" isTestSource="false" />
+    <content url="file://$MODULE_DIR$/../Repositories/strands_qsr_lib-master/qsr_lib/src">
+      <sourceFolder url="file://$MODULE_DIR$/../Repositories/strands_qsr_lib-master/qsr_lib/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../Repositories/strands_qsr_lib-master/qsr_lib/src/qsrlib" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../Repositories/strands_qsr_lib-master/qsr_lib/src/qsrlib_io" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../Repositories/strands_qsr_lib-master/qsr_lib/src/qsrlib_qsrs" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../Repositories/strands_qsr_lib-master/qsr_lib/src/qsrlib_qstag" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../Repositories/strands_qsr_lib-master/qsr_lib/src/qsrlib_ros" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../Repositories/strands_qsr_lib-master/qsr_lib/src/qsrlib_utils" isTestSource="false" />
     </content>
     <content url="file://$MODULE_DIR$">
       <excludeFolder url="file://$MODULE_DIR$/venv" />
@@ -16,7 +22,12 @@
       <sourceFolder url="file://$MODULE_DIR$/../strands_qsr_lib-master/qsr_lib/src/qsrlib_utils" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/../strands_qsr_lib-master/qsr_lib/src" isTestSource="false" />
     </content>
+    <content url="file:///usr/local/webots/lib/controller/python39" />
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+  <component name="PyDocumentationSettings">
+    <option name="format" value="EPYTEXT" />
+    <option name="myDocStringFormat" value="Epytext" />
   </component>
 </module>

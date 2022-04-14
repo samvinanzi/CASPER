@@ -1,0 +1,7 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Robot+Human" type="CompoundRunConfigurationType">
+    <toRun name="HumanAgent" type="PythonConfigurationType" />
+    <toRun name="RobotAgent" type="PythonConfigurationType" />
+    <method v="2" />
+  </configuration>
+</component>

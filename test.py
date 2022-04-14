@@ -11,7 +11,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from cognitive_architecture.FocusBelief import FocusBelief
 from owlready2 import *
-from cognitive_architecture.KnowledgeBase import Statement, KnowledgeBase
+from cognitive_architecture.KnowledgeBase import ObservationStatement, KnowledgeBase, GoalStatement
+from cognitive_architecture.InternalComms import InternalComms
+from cognitive_architecture.HighLevel import HighLevel, Goal
+from util.PathProvider import path_provider
 
 
 '''
@@ -149,12 +152,8 @@ for index, row in df.iterrows():
     #input("\nPress Enter to continue...")
 """
 
-"""
-# CRADLE-TEST
 
-from cognitive_architecture.InternalComms import InternalComms
-from cognitive_architecture.HighLevel import HighLevel
-from util.PathProvider import path_provider
+# CRADLE-TEST
 
 DOMAIN = path_provider.get_domain("Domain_kitchen_corrected.xml")
 OBSERVATIONS = path_provider.get_domain("Observations_example.xml")
@@ -164,41 +163,26 @@ internal_comms = InternalComms()
 highlevel = HighLevel(internal_comms, DOMAIN, OBSERVATIONS, debug=True)
 
 exps = highlevel.explain()
+#print(exps)
 
-print(exps)
-"""
+goals = []
+for exp in exps:
+    new_goal = Goal()
+    new_goal.parse_from_explanation(exp)
+    print("Goal: {0}\nValid: {1}".format(new_goal, new_goal.validate()))
+    goals.append(new_goal)
+
+
 
 """
 # ONTOLOGY-TEST
 
-onto = get_ontology('/home/samuele/Research/Ontologies/kitchen_onto.owl').load()
-print("{0} PICK AND PLACE {1} {2}".format(onto.human, onto.human.pnp_target, onto.human.pnp_destination))
-
-# This is inconsistent: a robot can't eat!
-onto.tiago.eat_target = onto.meal
-onto.tiago.eat_destination = onto.plate
-
-try:
-    sync_reasoner_pellet()
-    print("Ontology consistent!")
-except OwlReadyInconsistentOntologyError:
-    print("Ontology inconsistent...")
-
-# Removes the problem
-onto.tiago.eat_target = None
-onto.tiago.eat_destination = None
-
-try:
-    sync_reasoner_pellet()
-    print("Ontology consistent!")
-except OwlReadyInconsistentOntologyError:
-    print("Ontology inconsistent...")
-"""
-
 onto = KnowledgeBase('kitchen_onto')
-s = Statement("human", "COOK", "meal", "hobs")
-onto.verify_statement(s, debug=True)
-
+ob_s = ObservationStatement("human", "COOK", "meal", "hobs")
+onto.verify_observation(ob_s, debug=True)
+g_s = GoalStatement("human", "LUNCH", "biscuits")
+onto.verify_goal(g_s, debug=True)
+"""
 
 print("\nDone")
 pass

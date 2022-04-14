@@ -13,7 +13,7 @@ from cognitive_architecture.MarkovFSM import ensemble
 from cognitive_architecture.Contextualizer import Contextualizer
 from cognitive_architecture.Bridge import Bridge
 from cognitive_architecture.InternalComms import InternalComms
-from cognitive_architecture.KnowledgeBase import KnowledgeBase, Statement
+from cognitive_architecture.KnowledgeBase import kb, ObservationStatement
 import time
 from util.PathProvider import path_provider
 from cognitive_architecture.ObservationLibrary import ObservationLibrary
@@ -196,7 +196,6 @@ class LowLevel:
     def test(self, debug=False, save_focus=False):
         goal_found = False
         latest_prediction_time = None
-        kb = KnowledgeBase('kitchen_onto')
         while not goal_found:
             # Collect the latest QSRs calculated from the observation of the environment
             qsr_response, self.world_trace = self.tq.retrieve_qsrs()
@@ -255,9 +254,9 @@ class LowLevel:
                             ca = ctx.give_context(action, destination)
                             print("ACTION: {0} {1} {2}".format(ca, target, destination))
                             # VERIFICATION
-                            statement = Statement("human", ca, target, destination)
+                            statement = ObservationStatement("human", ca, target, destination)
                             print(statement)
-                            if not kb.verify_statement(statement):
+                            if not kb.verify_observation(statement):
                                 print("INCONSISTENT")
                                 continue
                             print("CONSISTENT")

@@ -76,6 +76,26 @@
     
 
 
+    <!-- http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#has_goal -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#has_goal">
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#FunctionalProperty"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Human"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Goal"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#involves_object -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#involves_object">
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#FunctionalProperty"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Goal"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Object"/>
+    </owl:ObjectProperty>
+    
+
+
     <!-- http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#pnp_destination -->
 
     <owl:ObjectProperty rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#pnp_destination">
@@ -412,9 +432,7 @@
 
     <!-- http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Agent -->
 
-    <owl:Class rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Agent">
-        <owl:disjointWith rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Object"/>
-    </owl:Class>
+    <owl:Class rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Agent"/>
     
 
 
@@ -450,6 +468,41 @@
             <owl:Restriction>
                 <owl:onProperty rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#washable"/>
                 <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#boolean">false</owl:hasValue>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Breakfast -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Breakfast">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Goal"/>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#involves_object"/>
+                <owl:someValuesFrom rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Biscuits"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Drink -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Drink">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Goal"/>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#involves_object"/>
+                <owl:someValuesFrom>
+                    <owl:Class>
+                        <owl:unionOf rdf:parseType="Collection">
+                            <rdf:Description rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Glass"/>
+                            <rdf:Description rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#WaterBottle"/>
+                        </owl:unionOf>
+                    </owl:Class>
+                </owl:someValuesFrom>
             </owl:Restriction>
         </rdfs:subClassOf>
     </owl:Class>
@@ -519,6 +572,12 @@
     
 
 
+    <!-- http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Goal -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Goal"/>
+    
+
+
     <!-- http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Hobs -->
 
     <owl:Class rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Hobs">
@@ -575,6 +634,20 @@
             <owl:Restriction>
                 <owl:onProperty rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#moveable"/>
                 <owl:hasValue rdf:datatype="http://www.w3.org/2001/XMLSchema#boolean">true</owl:hasValue>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Lunch -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Lunch">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Goal"/>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#involves_object"/>
+                <owl:someValuesFrom rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Meal"/>
             </owl:Restriction>
         </rdfs:subClassOf>
     </owl:Class>
@@ -793,6 +866,35 @@
     
 
 
+    <!-- http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#bottle -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#bottle">
+        <rdf:type rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#WaterBottle"/>
+        <kitchen_onto:cookable rdf:datatype="http://www.w3.org/2001/XMLSchema#boolean">false</kitchen_onto:cookable>
+        <kitchen_onto:drinkable rdf:datatype="http://www.w3.org/2001/XMLSchema#boolean">true</kitchen_onto:drinkable>
+        <kitchen_onto:eatable rdf:datatype="http://www.w3.org/2001/XMLSchema#boolean">false</kitchen_onto:eatable>
+        <kitchen_onto:moveable rdf:datatype="http://www.w3.org/2001/XMLSchema#boolean">true</kitchen_onto:moveable>
+        <kitchen_onto:washable rdf:datatype="http://www.w3.org/2001/XMLSchema#boolean">false</kitchen_onto:washable>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#breakfast -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#breakfast">
+        <rdf:type rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Breakfast"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#drink -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#drink">
+        <rdf:type rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Drink"/>
+    </owl:NamedIndividual>
+    
+
+
     <!-- http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#glass -->
 
     <owl:NamedIndividual rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#glass">
@@ -823,8 +925,14 @@
 
     <owl:NamedIndividual rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#human">
         <rdf:type rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Human"/>
-        <kitchen_onto:pnp_destination rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#hobs"/>
-        <kitchen_onto:pnp_target rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#meal"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#lunch -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#lunch">
+        <rdf:type rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Lunch"/>
     </owl:NamedIndividual>
     
 
@@ -876,19 +984,6 @@
     
 
 
-    <!-- http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#water_bottle -->
-
-    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#water_bottle">
-        <rdf:type rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#WaterBottle"/>
-        <kitchen_onto:cookable rdf:datatype="http://www.w3.org/2001/XMLSchema#boolean">false</kitchen_onto:cookable>
-        <kitchen_onto:drinkable rdf:datatype="http://www.w3.org/2001/XMLSchema#boolean">true</kitchen_onto:drinkable>
-        <kitchen_onto:eatable rdf:datatype="http://www.w3.org/2001/XMLSchema#boolean">false</kitchen_onto:eatable>
-        <kitchen_onto:moveable rdf:datatype="http://www.w3.org/2001/XMLSchema#boolean">true</kitchen_onto:moveable>
-        <kitchen_onto:washable rdf:datatype="http://www.w3.org/2001/XMLSchema#boolean">false</kitchen_onto:washable>
-    </owl:NamedIndividual>
-    
-
-
     <!-- 
     ///////////////////////////////////////////////////////////////////////////////////////
     //
@@ -900,9 +995,25 @@
     <rdf:Description>
         <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AllDisjointClasses"/>
         <owl:members rdf:parseType="Collection">
+            <rdf:Description rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Agent"/>
+            <rdf:Description rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Goal"/>
+            <rdf:Description rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Object"/>
+        </owl:members>
+    </rdf:Description>
+    <rdf:Description>
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AllDisjointClasses"/>
+        <owl:members rdf:parseType="Collection">
             <rdf:Description rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Biscuits"/>
             <rdf:Description rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Meal"/>
             <rdf:Description rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#WaterBottle"/>
+        </owl:members>
+    </rdf:Description>
+    <rdf:Description>
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AllDisjointClasses"/>
+        <owl:members rdf:parseType="Collection">
+            <rdf:Description rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Breakfast"/>
+            <rdf:Description rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Drink"/>
+            <rdf:Description rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Lunch"/>
         </owl:members>
     </rdf:Description>
     <rdf:Description>

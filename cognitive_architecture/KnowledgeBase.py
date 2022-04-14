@@ -8,7 +8,7 @@ from owlready2 import *
 from util.PathProvider import path_provider
 
 
-class Statement:
+class ObservationStatement:
     def __init__(self, actor, action, target, destination):
         assert actor is not None and action is not None and target is not None and destination is not None, \
             "All the fields are mandatory and cannot be None."
@@ -23,6 +23,19 @@ class Statement:
 
     def __str__(self):
         return "{0} {1} {2} {3}".format(self.actor, self.action.upper(), self.target, self.destination)
+
+
+class GoalStatement:
+    def __init__(self, actor, goal, target):
+        assert actor is not None and goal is not None and target is not None, \
+            "All the fields are mandatory and cannot be None."
+        # For example: human LUNCH meal
+        self.actor = actor
+        self.goal = goal
+        self.target = target
+
+    def __str__(self):
+        return "{0} {1} {2}".format(self.actor, self.goal.upper(), self.target)
 
 
 class KnowledgeBase:
@@ -55,20 +68,20 @@ class KnowledgeBase:
         except OwlReadyInconsistentOntologyError:
             return False
 
-    def verify_statement(self, statement, debug=False):
+    def verify_observation(self, observation_statement, debug=False):
         """
-        Verify if a statement is consistent with the ontology.
+        Verify if an observation statement is consistent with the ontology.
 
-        @param statement: A Statement object representing the action of an actor in the world.
+        @param observation_statement: An ObservationStatement object representing the action of an actor in the world.
         @param debug: Verbose output
         @return: True or False
         """
-        assert isinstance(statement, Statement), "Please provide an instance of Statement."
+        assert isinstance(observation_statement, ObservationStatement), "Input must be an ObservationStatement."
         # Finds the individuals referred by the statement
-        actor = self.find_individual(statement.actor)
-        action = statement.action
-        target = self.find_individual(statement.target)
-        destination = self.find_individual(statement.destination)
+        actor = self.find_individual(observation_statement.actor)
+        action = observation_statement.action
+        target = self.find_individual(observation_statement.target)
+        destination = self.find_individual(observation_statement.destination)
         if debug:
             print("{0} {1} {2} {3}".format(actor, action, target, destination))
         # Analyse the action
@@ -92,3 +105,33 @@ class KnowledgeBase:
         if debug:
             print("Is the action consistent in the ontology? {0}".format(result))
         return result
+
+    def verify_goal(self, goal_statement, debug=False):
+        """
+        Verify if a goal statement is consistent with the ontology.
+
+        @param goal_statement: A GoalStatement object representing the goal of an actor in the world.
+        @param debug: Verbose output
+        @return: True or False
+        """
+        assert isinstance(goal_statement, GoalStatement), "Input must be a GoalStatement."
+        # Finds the individuals referred by the statement
+        actor = self.find_individual(goal_statement.actor)
+        goal = self.find_individual(goal_statement.goal.lower())
+        target = self.find_individual(goal_statement.target)
+        if debug:
+            print("{0} {1} {2}".format(actor, goal, target))
+        # Set the attributes
+        setattr(actor, "has_goal", goal)
+        setattr(goal, "involves_object", target)
+        # Verification
+        result = self.verify()
+        # Resets the individuals for the next tests
+        setattr(actor, "has_goal", None)
+        setattr(goal, "involves_object", None)
+        if debug:
+            print("Is the goal consistent in the ontology? {0}".format(result))
+        return result
+
+
+kb = KnowledgeBase('kitchen_onto')
