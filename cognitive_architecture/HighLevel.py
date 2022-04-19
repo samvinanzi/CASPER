@@ -13,7 +13,7 @@ from CRADLE.Rule import Rule
 import CRADLE.PL as PL
 import CRADLE.Explanation as Explanation
 from cognitive_architecture.InternalComms import InternalComms
-from cognitive_architecture.KnowledgeBase import kb, GoalStatement
+from cognitive_architecture.KnowledgeBase import kb, GoalStatement, ObservationStatement
 from util.PathProvider import path_provider
 
 DATA_DIR = "data/CRADLE"
@@ -33,20 +33,21 @@ class Goal:
         goal_node = exp.getTrees()[0].getRoot()
         self.name = goal_node._ch
         self.param = goal_node._params
+        self.frontier = []
         frontier = exp.getTrees()[0].getFrontier()
-        self.frontier = [s.getRoot() for s in frontier]
+        for element in frontier:
+            self.frontier.append(ObservationStatement.from_NT(element.getRoot()))
         self.probability = exp.getExpProbability()
 
     def to_goal_statement(self):
         # todo this assumes the existence of only one human, has to be changed in the future
-        return GoalStatement("human", self.name, self.param[0][1])
+        return GoalStatement("human", self.name, self.param[0][1], self.frontier)
 
     def validate(self):
         return kb.verify_goal(self.to_goal_statement())
 
     def __str__(self):
-        return "Goal: {0} with parameters {1} (probability {2}).\nFrontier: {3}".format(
-            self.name, self.param, self.probability, self.frontier)
+        return "{0}\nProbability: {1}".format(str(self.to_goal_statement()), self.probability)
 
 
 class HighLevel(StopThread):
@@ -87,7 +88,7 @@ class HighLevel(StopThread):
         """
         assert self.observations is not None, "Please run use_observation_file() before requesting an explanation"
         exps = ExplainAndCompute(self.plan_library, self.observations)
-        exps.sort(key=Explanation.Explanation.getExpProbability)    # Sorts by decreasing probabilities
+        #exps.sort(key=Explanation.Explanation.getExpProbability)    # Sorts by decreasing probabilities
         if len(exps) == 0:
             print("No Explanations")
             return None
@@ -103,42 +104,39 @@ class HighLevel(StopThread):
             print("No Frontier Explanations: ", noFrontier)
         return exps
 
-    def parse_explanations(self, exps):
+    def parse_explanations(self, exps, debug=False):
         """
-        Parse the list of Explanations to obtain useful information.
+        Parses the explanations produced by CRADLE and extracts information on the uderlying goals.
 
-        :param exps: list of Explanations
-        :return: goal and frontier information
+        @param exps: list of Explanations
+        @param debug: if True, activates verbose output
+        @return: one Goal, or None
         """
-        if len(exps) > 2:
+        goals = []
+        for exp in exps:
+            new_goal = Goal()
+            new_goal.parse_from_explanation(exp)
+            if debug:
+                print("Goal: {0}\nValid: {1}\n".format(new_goal, new_goal.validate()))
+            gs = new_goal.to_goal_statement()
+            if kb.verify_goal(gs):
+                kb.infer_frontier(new_goal.to_goal_statement())
+                goals.append(new_goal)
+            elif debug:
+                print("Filtered out goal \"{0}\"".format(gs))
+        n_goals = len(goals)
+        if n_goals == 0:
+            print("I'm sorry, I can't explain what's happening.")
+            return None
+        elif n_goals > 2:
             print("Too many possibilities, I'm not sure...")
-            return None, None
-        else:
-            exp: Explanation = None
-            if len(exps) == 1:
-                exp = exps[0]   # There is only one explanation
-            else:
-                probs = [exp.getExpProbability() for exp in exps]
-                if probs[0] == probs[1]:
-                    return None, None   # Tie between two choices, can't give an answer
-                else:
-                    # Pick the explanation with highest probability
-                    pass    # todo
-            #if len(exps) > 1:
-            #    probs = [exp.getExpProbability() for exp in exps]
-            #    if probs[0] == probs[1]:
-            #        exp = random.choice(probs)  # If two equally probable explanation, pick one at random
-            #else:
-            #    exp = exps[0]
-            # Extract data from the most probable explanation
-            goal_node = exp.getTrees()[0].getRoot()
-            goal = goal_node._ch
-            g_params = goal_node._params
-            print("Goal: {0} with parameters {1}".format(goal, g_params))
-            frontier = exp.getTrees()[0].getFrontier()
-            frontier_nodes = [s.getRoot() for s in frontier]
-            print("Frontier: {0}".format(frontier_nodes))
-            return goal, frontier_nodes
+            return None
+        elif n_goals == 2 and goals[0].probability == goals[1].probability:
+            print("Two equal probabilities, not sure yet...")
+            return None
+        else:   # 2 goals with different probabilities or 1 goal
+            print("I have found an explanation!")
+            return goals[0]
 
     def run(self) -> None:
         self.stop_flag = False  # This is done to avoid unexpected behavior
@@ -156,25 +154,20 @@ class HighLevel(StopThread):
                 if self.debug:
                     print("[HL] Possible explanations:\n{0}".format(exps))
                 if exps is not None:
-                    goal, frontier = self.parse_explanations(exps)
+                    goal = self.parse_explanations(exps, debug=False)
                     # Report the findings back to the low-level
-                    self.internal_comms.write_goal(goal, frontier)
+                    self.internal_comms.write_goal(goal)
                     if goal:
                         if self.debug:
-                            print("[HL] Goal detected! {0}".format(goal))
+                            print("[HL] Goal detected! {0}".format(str(goal)))
                         # At this point, it must stop executing
-                        self.stop()     # todo sure?
+                        #self.stop()     # todo sure?
                 else:
-                    # todo How to act when no explanation can describe the observations?
-                    pass
+                    # No explanation can describe the observations
+                    print("[CRITICAL] No explanation found for the observed events!")
+                    #self.stop()
 
-
-
-
-
-
-
-
+# **********************************************************************************************************************
 
     # --- Code below from CRADLE's implementation --- #
 

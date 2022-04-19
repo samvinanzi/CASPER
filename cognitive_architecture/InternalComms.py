@@ -13,8 +13,7 @@ class InternalComms:
         self.queue_event = Event()      # signals the presence of new data in vocal_queue
         self.name_event = Event()       # signals the presence of new data in goal_name
         self.lock = Lock()              # to protect goal_name
-        self.goal_name = None           # inferred goal name
-        self.frontier = None            # inferred plan frontier
+        self.goal = None                # inferred goal
 
     # Inserts an item in the queue and signals the event
     def put(self, item):
@@ -37,24 +36,21 @@ class InternalComms:
                 print("[ERROR] Invalid access to empty transition queue")
 
     # Writes the inferred goal name
-    def write_goal(self, name, frontier):
-        #assert name is not None, "invalid goal name"
+    def write_goal(self, goal):
         with self.lock:
-            self.goal_name = name
-            self.frontier = frontier
+            self.goal = goal
         self.name_event.set()
 
     # Retrieves the goal name
     def get_goal(self):
         self.name_event.wait()
         with self.lock:
-            name = self.goal_name
-            frontier = self.frontier
+            goal = self.goal
         self.name_event.clear()
-        return name, frontier
+        return goal
 
     # Has a goal name been found?
     def was_goal_inferred(self):
         with self.lock:
-            name = self.goal_name
-        return True if name else False
+            goal = self.goal
+        return True if goal else False

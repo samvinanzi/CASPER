@@ -160,17 +160,27 @@ OBSERVATIONS = path_provider.get_domain("Observations_example.xml")
 #OBSERVATIONS = path_provider.get_observations()
 
 internal_comms = InternalComms()
-highlevel = HighLevel(internal_comms, DOMAIN, OBSERVATIONS, debug=True)
+highlevel = HighLevel(internal_comms, DOMAIN, OBSERVATIONS, debug=False)
 
 exps = highlevel.explain()
 #print(exps)
 
-goals = []
-for exp in exps:
-    new_goal = Goal()
-    new_goal.parse_from_explanation(exp)
-    print("Goal: {0}\nValid: {1}".format(new_goal, new_goal.validate()))
-    goals.append(new_goal)
+kb = KnowledgeBase('kitchen_onto')
+
+goals = highlevel.parse_explanations(exps, debug=False)
+
+for goal in goals:
+    print(goal)
+
+#goals = []
+#for exp in exps:
+#    new_goal = Goal()
+#    new_goal.parse_from_explanation(exp)
+#    print("Goal: {0}\nValid: {1}\n".format(new_goal, new_goal.validate()))
+#    kb.verify_frontier("human", new_goal.to_goal_statement())
+#    goals.append(new_goal)
+
+
 
 
 

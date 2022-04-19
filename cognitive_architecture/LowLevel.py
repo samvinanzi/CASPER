@@ -14,6 +14,7 @@ from cognitive_architecture.Contextualizer import Contextualizer
 from cognitive_architecture.Bridge import Bridge
 from cognitive_architecture.InternalComms import InternalComms
 from cognitive_architecture.KnowledgeBase import kb, ObservationStatement
+from cognitive_architecture.HighLevel import Goal
 import time
 from util.PathProvider import path_provider
 from cognitive_architecture.ObservationLibrary import ObservationLibrary
@@ -246,20 +247,20 @@ class LowLevel:
                                 print("No action prediction. Candidates: {0} with scores: {1}".format(action, score))
                             continue    # More data is needed
                         else:
-                            latest_prediction_time = latest_timestamp
-                            ensemble.empty_observations()   # Reset the observations
                             # Contextualize the Action
                             ctx = Contextualizer()
                             # The second item of the focus is the destination
                             ca = ctx.give_context(action, destination)
                             print("ACTION: {0} {1} {2}".format(ca, target, destination))
                             # VERIFICATION
-                            statement = ObservationStatement("human", ca, target, destination)
-                            print(statement)
+                            statement = ObservationStatement("human", ca, target, destination)  # todo multiple humans
                             if not kb.verify_observation(statement):
-                                print("INCONSISTENT")
+                                if debug:
+                                    print("[ERROR] Action \"{0}\" is inconsistent with the ontology.".format(statement))
                                 continue
-                            print("CONSISTENT")
+                            # Observations are only reset here because the predicted action might be inconsistent
+                            latest_prediction_time = latest_timestamp
+                            ensemble.empty_observations()
                             # Retrieve the format of that action
                             data = self.bridge.retrieve_data(ca)
                             if data is None:
@@ -274,9 +275,9 @@ class LowLevel:
                             # Gives HL time to fetch the data and detect a new goal
                             time.sleep(1)  # todo more time?
                             # Check if a goal was found
-                            goal, frontier = self.internal_comms.get_goal()
+                            goal: Goal = self.internal_comms.get_goal()
                             if goal is not None:
-                                print("GOAL: {0}\n\nFrontier: {1}".format(goal, frontier))
+                                print("GOAL: {0}".format(goal))
                                 goal_found = True  # Exit condition
         # Collaborate
         # todo
