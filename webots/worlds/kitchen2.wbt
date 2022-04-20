@@ -797,7 +797,7 @@ myTiago++ {
 HumanAgent {
   translation 1.4688 1.27 2.11786
   rotation 0 1 0 3.14159
-  heldObjectReference 9791
+  heldObjectReference 9782
   trainingTaskLabel "PICK"
   trainingTaskTarget "meal"
 }

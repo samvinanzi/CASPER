@@ -167,10 +167,10 @@ exps = highlevel.explain()
 
 kb = KnowledgeBase('kitchen_onto')
 
-goals = highlevel.parse_explanations(exps, debug=False)
+#goals = highlevel.parse_explanations(exps, debug=True)
 
-for goal in goals:
-    print(goal)
+#for goal in [goals]:
+#    print(goal)
 
 #goals = []
 #for exp in exps:

@@ -7,7 +7,7 @@ TIAGo++: https://www.cyberbotics.com/doc/guide/tiagopp?version=master
 
 import math
 import pickle
-
+import cProfile
 from Agent import Agent
 from controller import Field, InertialUnit, Motion, Node
 import os
@@ -348,23 +348,25 @@ class RobotAgent(Agent):
 
 # MAIN LOOP
 
-robot = RobotAgent()
-tracked_objects = ['can', 'pedestrian']
+def main():
+    robot = RobotAgent()
+    # Perform simulation steps until Webots is stopping the controller
+    robot.motion("neutral")
+    while robot.step():
+        if robot.is_camera_active():
+            if robot.search_for("pedestrian"):
+                robot.track_target("pedestrian")
+                #if robot.supervisor.getTime() >= 40:
+                    #qsr_response = robot.compute_qsr_test()
+                    #robot.cognition.lowlevel.compute_qsr(show=True)
+                    #pickle.dump(qsr_response, open(os.path.join(BASEDIR, "data\pickle\qsr_response{0}.p".format(i)), "wb"))
+                    #pickle.dump(robot.world_trace, open(os.path.join(BASEDIR, "data\pickle\world_trace{0}.p".format(i)), "wb"))
+                    #print("Saved")
+                #    break
+            else:
+                print("I didn't find the human!")
 
-i = "0"
+# Run this code to benchmark execution time
+cProfile.run('main()', sort='time')
+#main()
 
-# Perform simulation steps until Webots is stopping the controller
-robot.motion("neutral")
-while robot.step():
-    if robot.is_camera_active():
-        if robot.search_for("pedestrian"):
-            robot.track_target("pedestrian")
-            #if robot.supervisor.getTime() >= 40:
-                #qsr_response = robot.compute_qsr_test()
-                #robot.cognition.lowlevel.compute_qsr(show=True)
-                #pickle.dump(qsr_response, open(os.path.join(BASEDIR, "data\pickle\qsr_response{0}.p".format(i)), "wb"))
-                #pickle.dump(robot.world_trace, open(os.path.join(BASEDIR, "data\pickle\world_trace{0}.p".format(i)), "wb"))
-                #print("Saved")
-            #    break
-        else:
-            print("I didn't find the human!")

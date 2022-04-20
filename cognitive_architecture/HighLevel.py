@@ -123,7 +123,7 @@ class HighLevel(StopThread):
                 kb.infer_frontier(new_goal.to_goal_statement())
                 goals.append(new_goal)
             elif debug:
-                print("Filtered out goal \"{0}\"".format(gs))
+                print("\nFiltered out goal \"{0}\"".format(gs))
         n_goals = len(goals)
         if n_goals == 0:
             print("I'm sorry, I can't explain what's happening.")

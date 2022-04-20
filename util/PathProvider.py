@@ -43,5 +43,9 @@ class PathProvider:
     def get_ontology(self, filename):
         return str((self.ONTO / filename).with_suffix('.owl').resolve())    # Owlready can't handle PosixPath apparently
 
+    def get_SQLite3(self):
+        return (self.DATA / 'sqlite3' / 'kitchen.sqlite3').resolve()
+
+
 
 path_provider = PathProvider()

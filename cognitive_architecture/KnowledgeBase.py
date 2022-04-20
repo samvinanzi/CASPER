@@ -52,17 +52,28 @@ class GoalStatement:
 
 
 class KnowledgeBase:
+    # Saves the world in an SQLite3 file on disk instead of keeping it in memory
+    default_world.set_backend(filename=path_provider.get_SQLite3(), exclusive=False)
+
     def __init__(self, ontology_name):
         ontofile = path_provider.get_ontology(ontology_name)
         self.onto = get_ontology(ontofile).load()
-        self.op = [property.name for property in self.onto.object_properties()] # All the object properties names
+        default_world.save()
+        self.op = [property.name for property in self.onto.object_properties()]     # All the object properties names
+        self.individuals = [individual for individual in self.onto.individuals()]   # All the individuals
 
     def find_individual(self, name):
-        individuals = self.onto.individuals()
-        for individual in individuals:
-            if individual.name == name:
-                return individual
-        return None
+        """
+        Finds a specific individual by name.
+
+        @param name: name to search for
+        @return: the individual, or None if not found
+        """
+        result = [i for i in self.individuals if i.name == name]
+        if result:
+            return result[0]
+        else:
+            return None
 
     def verify(self, engine="pellet", infer=False):
         """
@@ -73,21 +84,22 @@ class KnowledgeBase:
         @return: True if the ontology is consistent, False otherwise
         """
         assert engine in ["pellet", "hermit"], "Engine can be either 'hermit' or 'pellet'."
-        print("[KB] Reasoning...")
-        try:
-            if engine == "hermit":
-                sync_reasoner_hermit(infer_property_values=infer)
-            else:
-                sync_reasoner_pellet(infer_property_values=infer)
-            return True
-        except OwlReadyInconsistentOntologyError:
-            return False
+        with self.onto:
+            try:
+                if engine == "hermit":
+                    sync_reasoner_hermit(self.onto, infer_property_values=infer, debug=0)
+                else:
+                    sync_reasoner_pellet(self.onto, infer_property_values=infer, debug=0)
+                return True
+            except OwlReadyInconsistentOntologyError:
+                return False
 
-    def verify_observation(self, observation_statement, infer=False, debug=False):
+    def verify_observation(self, observation_statement, infer=False, debug=True):
         """
         Verify if an observation statement is consistent with the ontology.
 
         @param observation_statement: An ObservationStatement object representing the action of an actor in the world.
+        @param infer: if True, enables inference on data properties.
         @param debug: Verbose output
         @return: True or False
         """
@@ -110,8 +122,10 @@ class KnowledgeBase:
             if destination is not None:
                 # Destination might be none if the observation comes from the frontier
                 setattr(actor, pd, destination)
+            print("VERIFICATION STARTED")
             # Verification
             observation_statement.valid = self.verify(engine="pellet", infer=infer)
+            print("VERIFICATION ENDED")
             # If we are inferring properties, these have to be saved in the original statement
             if infer:
                 target_individual = getattr(actor, pt)
