@@ -6,6 +6,7 @@ This class uses an ontology to verify the correctness of the low-level predictio
 
 from owlready2 import *
 from util.PathProvider import path_provider
+import multiprocessing
 
 
 class ObservationStatement:
@@ -75,24 +76,51 @@ class KnowledgeBase:
         else:
             return None
 
-    def verify(self, engine="pellet", infer=False):
+    def _verify(self, queue, engine="pellet", infer=False):
         """
         Verifies the consistency of the ontology.
+        This function should only be called by verify_multiprocessing().
 
+        @param queue: synchronized Queue to share the return value
         @param engine: hermit or pellet
         @param infer: if True, allows inference for property values through SWRL rules
         @return: True if the ontology is consistent, False otherwise
         """
         assert engine in ["pellet", "hermit"], "Engine can be either 'hermit' or 'pellet'."
+        return_value = queue.get()
         with self.onto:
             try:
                 if engine == "hermit":
                     sync_reasoner_hermit(self.onto, infer_property_values=infer, debug=0)
                 else:
                     sync_reasoner_pellet(self.onto, infer_property_values=infer, debug=0)
-                return True
+                return_value['consistent'] = True
+                #return True
             except OwlReadyInconsistentOntologyError:
-                return False
+                return_value['consistent'] = False
+                #return False
+            finally:
+                queue.put(return_value)
+
+    def verify_multiprocessing(self, engine="pellet", infer=False):
+        """
+        Verifies the consistency of the ontology, spawning a separate process.
+
+        @param queue: synchronized Queue to share the return value
+        @param engine: hermit or pellet
+        @param infer: if True, allows inference for property values through SWRL rules
+        @return: True if the ontology is consistent, False otherwise
+        """
+        # The return value will be placed in a Queue and shared with the process
+        return_value = {'consistent': False}
+        queue = multiprocessing.Queue()
+        queue.put(return_value)
+        params = {'queue': queue, 'engine': engine, 'infer': infer}
+        p = multiprocessing.Process(target=self._verify, kwargs=params)
+        p.start()
+        p.join()
+        return_value = queue.get()
+        return return_value['consistent']
 
     def verify_observation(self, observation_statement, infer=False, debug=True):
         """
@@ -122,10 +150,9 @@ class KnowledgeBase:
             if destination is not None:
                 # Destination might be none if the observation comes from the frontier
                 setattr(actor, pd, destination)
-            print("VERIFICATION STARTED")
             # Verification
-            observation_statement.valid = self.verify(engine="pellet", infer=infer)
-            print("VERIFICATION ENDED")
+            observation_statement.valid = self.verify_multiprocessing(engine="pellet", infer=infer)
+            #observation_statement.valid = self.verify(engine="pellet", infer=infer)
             # If we are inferring properties, these have to be saved in the original statement
             if infer:
                 target_individual = getattr(actor, pt)
@@ -138,7 +165,7 @@ class KnowledgeBase:
         else:
             if debug:
                 print("Action not found")
-            result = False    # The action was not recognized
+            observation_statement.valid = False    # The action was not recognized
         if debug:
             print("Is the action consistent in the ontology? {0}".format(observation_statement.valid))
         return observation_statement.valid
@@ -162,7 +189,8 @@ class KnowledgeBase:
         setattr(actor, "has_goal", goal)
         setattr(goal, "involves_object", target)
         # Verification
-        goal_statement.valid = self.verify()
+        goal_statement.valid = self.verify_multiprocessing()
+        #goal_statement.valid = self.verify()
         # Resets the individuals for the next tests
         setattr(actor, "has_goal", None)
         setattr(goal, "involves_object", None)
@@ -180,8 +208,6 @@ class KnowledgeBase:
         assert isinstance(goal, GoalStatement), "goal has to be an instance of GoalStatement."
         for f in goal.frontier:
             self.verify_observation(f, infer=True)
-
-
 
 
 kb = KnowledgeBase('kitchen_onto')

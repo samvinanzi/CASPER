@@ -167,7 +167,7 @@ exps = highlevel.explain()
 
 kb = KnowledgeBase('kitchen_onto')
 
-#goals = highlevel.parse_explanations(exps, debug=True)
+goals = highlevel.parse_explanations(exps, debug=True)
 
 #for goal in [goals]:
 #    print(goal)
@@ -181,8 +181,15 @@ kb = KnowledgeBase('kitchen_onto')
 #    goals.append(new_goal)
 
 
-
-
+"""
+kb = KnowledgeBase('kitchen_onto')
+os1 = ObservationStatement("human", "COOK", "meal", "hobs")
+os2 = ObservationStatement("tiago", "EAT", "meal", "plate")
+os3 = ObservationStatement("human", "COOK", "meal", "sink")
+kb.verify_observation(os1, debug=True)
+kb.verify_observation(os2, debug=True)
+kb.verify_observation(os3, debug=True)
+"""
 
 """
 # ONTOLOGY-TEST

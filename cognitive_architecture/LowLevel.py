@@ -278,6 +278,6 @@ class LowLevel:
                             goal: Goal = self.internal_comms.get_goal()
                             if goal is not None:
                                 print("GOAL: {0}".format(goal))
-                                goal_found = True  # Exit condition
+                                #goal_found = True  # Exit condition
         # Collaborate
         # todo

@@ -117,13 +117,15 @@ class HighLevel(StopThread):
             new_goal = Goal()
             new_goal.parse_from_explanation(exp)
             if debug:
-                print("Goal: {0}\nValid: {1}\n".format(new_goal, new_goal.validate()))
+                print("\nGoal: {0}\nValid: {1}\n".format(new_goal, new_goal.validate()))
             gs = new_goal.to_goal_statement()
             if kb.verify_goal(gs):
+                if debug:
+                    print("Validating frontier...")
                 kb.infer_frontier(new_goal.to_goal_statement())
                 goals.append(new_goal)
             elif debug:
-                print("\nFiltered out goal \"{0}\"".format(gs))
+                print("Filtered out goal \"{0}\"".format(gs.goal))
         n_goals = len(goals)
         if n_goals == 0:
             print("I'm sorry, I can't explain what's happening.")
