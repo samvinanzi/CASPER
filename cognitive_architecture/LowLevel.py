@@ -278,6 +278,9 @@ class LowLevel:
                             goal: Goal = self.internal_comms.get_goal()
                             if goal is not None:
                                 print("GOAL: {0}".format(goal))
+                                # Analyzes the frontier to see if it can collaborate (yet)
+                                frontier = goal.frontier
+
                                 #goal_found = True  # Exit condition
         # Collaborate
         # todo

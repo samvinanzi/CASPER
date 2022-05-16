@@ -120,9 +120,9 @@ class HighLevel(StopThread):
                 print("\nGoal: {0}\nValid: {1}\n".format(new_goal, new_goal.validate()))
             gs = new_goal.to_goal_statement()
             if kb.verify_goal(gs):
-                if debug:
-                    print("Validating frontier...")
-                kb.infer_frontier(new_goal.to_goal_statement())
+                #if debug:
+                #    print("Validating frontier...")
+                #kb.infer_frontier(new_goal.to_goal_statement())
                 goals.append(new_goal)
             elif debug:
                 print("Filtered out goal \"{0}\"".format(gs.goal))

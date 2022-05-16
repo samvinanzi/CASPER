@@ -10,11 +10,12 @@ from util.PathProvider import path_provider
 import pandas as pd
 import matplotlib.pyplot as plt
 from cognitive_architecture.FocusBelief import FocusBelief
-from owlready2 import *
+#from owlready2 import *
 from cognitive_architecture.KnowledgeBase import ObservationStatement, KnowledgeBase, GoalStatement
 from cognitive_architecture.InternalComms import InternalComms
 from cognitive_architecture.HighLevel import HighLevel, Goal
 from util.PathProvider import path_provider
+from cognitive_architecture.PlanLibrary import *
 
 
 '''
@@ -154,20 +155,22 @@ for index, row in df.iterrows():
 
 
 # CRADLE-TEST
+"""
 
-DOMAIN = path_provider.get_domain("Domain_kitchen_corrected.xml")
+DOMAIN = path_provider.get_domain("lunch.xml")
 OBSERVATIONS = path_provider.get_domain("Observations_example.xml")
 #OBSERVATIONS = path_provider.get_observations()
 
 internal_comms = InternalComms()
-highlevel = HighLevel(internal_comms, DOMAIN, OBSERVATIONS, debug=False)
+highlevel = HighLevel(internal_comms, DOMAIN, OBSERVATIONS, debug=True)
 
-exps = highlevel.explain()
-#print(exps)
+exps = highlevel.explain(debug=True)
+print(exps)
 
 kb = KnowledgeBase('kitchen_onto')
 
-goals = highlevel.parse_explanations(exps, debug=True)
+if exps:
+    goals = highlevel.parse_explanations(exps, debug=True)
 
 #for goal in [goals]:
 #    print(goal)
@@ -179,7 +182,7 @@ goals = highlevel.parse_explanations(exps, debug=True)
 #    print("Goal: {0}\nValid: {1}\n".format(new_goal, new_goal.validate()))
 #    kb.verify_frontier("human", new_goal.to_goal_statement())
 #    goals.append(new_goal)
-
+"""
 
 """
 kb = KnowledgeBase('kitchen_onto')
@@ -200,6 +203,17 @@ onto.verify_observation(ob_s, debug=True)
 g_s = GoalStatement("human", "LUNCH", "biscuits")
 onto.verify_goal(g_s, debug=True)
 """
+
+
+pl = PlanLibrary()
+pl.add_observation("Pick&Place", parameters={'item': 'meal', 'destination': 'hobs'})
+pl.add_observation("Pick&Place", parameters={'item': 'meal', 'destination': 'plate'})
+
+pl.explain()
+
+#for pl in pl.plans:
+#    pl.dot_render()
+
 
 print("\nDone")
 pass
