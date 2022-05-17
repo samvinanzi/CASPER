@@ -7,6 +7,7 @@ These classes model the Plan Library to perform probabilistic goal recognition.
 import copy
 from anytree import NodeMixin, RenderTree, PreOrderIter
 from anytree.exporter import UniqueDotExporter
+from anytree.search import findall
 from enum import Enum
 
 
@@ -57,7 +58,7 @@ class PLNode(NodeMixin):
         self.marker = mark
 
     def __str__(self):
-        return "{0} with parameters {1}".format(self.name, self.parameters)
+        return "{0} {1}".format(self.name, self.parameters)
 
 
 # Terminal nodes
@@ -118,7 +119,7 @@ class PrepareMealNode(PLNode):
     def __init__(self, id=0, parent=None, children=None):
         super().__init__(action="PrepareMeal", id=id, parent=parent, children=children)
         self.parameters = {
-            "meal": None,
+            "food": None,
             "appliance": "hobs",
             "vessel": "plate"
         }
@@ -153,7 +154,8 @@ class BreakfastNode(PLNode):
         self.goal = True
         self.parameters = {
             "food": None,
-            "vessel": "plate"
+            "vessel": "plate",
+            "wash": "sink"
         }
         self.children = [PnPNode(), EatNode(), CleanNode()]
 
@@ -165,7 +167,8 @@ class LunchNode(PLNode):
         self.parameters = {
             "food": None,
             "appliance": "hobs",
-            "vessel": "plate"
+            "vessel": "plate",
+            "wash": "sink"
         }
         self.children = [PrepareMealNode(), EatNode(), CleanNode()]
 
@@ -176,7 +179,8 @@ class DrinkNode(PLNode):
         self.goal = True
         self.parameters = {
             "beverage": None,
-            "vessel": "glass"
+            "vessel": "glass",
+            "wash": "sink"
         }
         self.children = [PnPNode(), SipNode(), CleanNode()]
 
@@ -215,10 +219,9 @@ class Plan:
         @param id: int id
         @return: The desired node, or None if not found.
         """
-        nodes = [node for node in PreOrderIter(self.root)]
-        for node in nodes:
-            if node.id == id:
-                return node
+        nodelist = findall(self.root, filter_=lambda node: node.id == id, maxcount=1)
+        if nodelist:
+            return nodelist[0]
         return None
 
     def calculate_score(self):
@@ -230,8 +233,8 @@ class Plan:
         @return: None
         """
         frontier = self.root.leaves
-        completed = 0
-        missed = 0
+        completed = 0   # % of observed nodes
+        missed = 0      # % of missed nodes
         for leaf in frontier:
             if leaf.is_observed():
                 completed += 1
@@ -241,29 +244,52 @@ class Plan:
         missed = missed / len(frontier)
         self.score = completed * (1 - missed)
 
-    def enforce_equivalencies(self):
+    def propagate_equivalencies(self, observation):
         """
-        Using the equivalency table, checks that the specified parameters are equal. If some are blank, it fills them
-        in. If they are conflicting, returns an error message.
+        Propagates the equivalencies using the appropriate table. First from observation to root, then from root to all
+        the other nodes.
 
         @return: None
         """
-        for couple in self.equivalencies:
+        def process_equivalency(couple, debug=False):
+            """
+            Processes a single equivalency couple.
+
+            @param couple: [(nodeA_id, paramA), (nodeB_id, paramB)]
+            @param debug: if True, activate verbose output
+            @return: None
+            """
             nodeA_id = couple[0][0]
             paramA = couple[0][1]
             nodeB_id = couple[1][0]
             paramB = couple[1][1]
             nodeA = self.get_node_by_id(nodeA_id)
             nodeB = self.get_node_by_id(nodeB_id)
+            if debug:
+                print("\nMatching:")
+                print("Node {0} (id {1}), parameter {2} = {3}".format(nodeA.name, nodeA_id, paramA,
+                                                                      nodeA.parameters[paramA]))
+                print("Node {0} (id {1}), parameter {2} = {3}".format(nodeB.name, nodeB_id, paramB,
+                                                                      nodeB.parameters[paramB]))
+            # If the two parameter values are different, fill in the None values, if any
             if nodeA.parameters[paramA] != nodeB.parameters[paramB]:
                 if nodeA.parameters[paramA] is None:
                     nodeA.parameters[paramA] = nodeB.parameters[paramB]
                 elif nodeB.parameters[paramB] is None:
                     nodeB.parameters[paramB] = nodeA.parameters[paramA]
-                else:
-                    print("There is a conflict!\nNode {0}, parameter {1} = {2}\nNode {0}, parameter {1} = {2}".format(
-                        nodeA.name, paramA, nodeA.parameters[paramA], nodeB.name, paramB, nodeB.parameters[paramB]
-                    ))
+                # Should something happen when a conflict is detected?
+                #else:
+                    #print("There is a conflict!\nNode {0}, parameter {1} = {2}\nNode {3}, parameter {4} = {5}".format(
+                    #    nodeA.name, paramA, nodeA.parameters[paramA], nodeB.name, paramB, nodeB.parameters[paramB]
+                    #))
+
+        # First, only propagate the equivalencies related to the observation
+        for couple in [couple for couple in self.equivalencies if couple[1][0] == observation]:
+            process_equivalency(couple)
+        # Then, propagate every other equivalency
+        for couple in self.equivalencies:
+            if couple[0][1] != observation:
+                process_equivalency(couple)
 
     def render(self):
         """
@@ -273,11 +299,11 @@ class Plan:
         """
         for pre, _, node in RenderTree(self.root):
             if node.goal:
-                print("{0}{1} {{{2}}}".format(pre, node.name, round(self.score, 2)))
+                print("[{0}] {1}{2}".format(round(self.score, 2), pre, node))
             elif node.nt:
-                print("{0}{1}".format(pre, node.name))
+                print("{0}{1}".format(pre, node))
             else:
-                print("{0}{1} [{2}]".format(pre, node.name, node.marker.name))
+                print("{0}{1} [{2}]".format(pre, node, node.marker.name))
         print("\n")
 
     def dot_render(self):
@@ -310,48 +336,52 @@ class PlanLibrary:
         self.plans.extend([Plan(BreakfastNode()), Plan(LunchNode()), Plan(DrinkNode())])
         # Sets unique IDs by traversing the plans by breadth-first-search
         for plan in self.plans:
-            id = 0
-            for node in [node for node in PreOrderIter(plan.root)]:
+            for id, node in enumerate([node for node in PreOrderIter(plan.root)]):
                 node.id = id
-                id += 1
         # Sets the equivalency tables
+        # TUTORIAL: How to write the equivalencies?
+        # First element should be the ROOT node, second item should be the child
         breakfast_equivalencies = [
             [(0, "food"), (1, "item")],
-            [(1, "item"), (2, "food")],
-            [(1, "destination"), (2, "vessel")],
-            [(2, "vessel"), (3, "item")],
-            [(3, "item"), (4, "item")],
-            [(4, "item"), (5, "item")],
-            [(4, "destination"), (5, "appliance")]
-        ]
-        drink_equivalencies = [
-            [(0, "beverage"), (1, "item")],
-            [(1, "item"), (2, "beverage")],
-            [(1, "destination"), (2, "vessel")],
-            [(2, "vessel"), (3, "item")],
-            [(3, "item"), (4, "item")],
-            [(4, "item"), (5, "item")],
-            [(4, "destination"), (5, "appliance")]
+            [(0, "vessel"), (1, "destination")],
+            [(0, "food"), (2, "food")],
+            [(0, "vessel"), (2, "vessel")],
+            [(0, "vessel"), (3, "item")],
+            [(0, "vessel"), (4, "item")],
+            [(0, "wash"), (4, "destination")],
+            [(0, "vessel"), (5, "item")],
+            [(0, "wash"), (5, "appliance")],
         ]
         lunch_equivalencies = [
             [(0, "food"), (1, "food")],
-            [(1, "food"), (2, "food")],
-            [(2, "food"), (3, "item")],
-            [(3, "item"), (4, "food")],
-            [(3, "destination"), (4, "appliance")],
-            [(2, "food"), (5, "item")],
-            [(5, "food"), (6, "food")],
-            [(5, "destination"), (6, "vessel")],
-            [(6, "vessel"), (7, "item")],
-            [(7, "item"), (8, "item")],
-            [(8, "item"), (9, "item")],
-            [(8, "destination"), (9, "appliance")]
+            [(0, "food"), (2, "food")],
+            [(0, "food"), (3, "item")],
+            [(0, "appliance"), (3, "destination")],
+            [(0, "food"), (4, "food")],
+            [(0, "food"), (5, "item")],
+            [(0, "vessel"), (5, "destination")],
+            [(0, "food"), (6, "food")],
+            [(0, "vessel"), (7, "item")],
+            [(0, "vessel"), (8, "item")],
+            [(0, "wash"), (8, "destination")],
+            [(0, "vessel"), (9, "item")],
+            [(0, "vessel"), (9, "appliance")],
+        ]
+        drink_equivalencies = [
+            [(0, "beverage"), (1, "item")],
+            [(0, "vessel"), (1, "destination")],
+            [(0, "beverage"), (2, "beverage")],
+            [(0, "vessel"), (2, "vessel")],
+            [(0, "vessel"), (3, "item")],
+            [(0, "vessel"), (4, "item")],
+            [(0, "wash"), (4, "destination")],
+            [(0, "vessel"), (5, "item")],
+            [(0, "wash"), (5, "appliance")],
         ]
         self.plans[0].equivalencies = breakfast_equivalencies
         self.plans[1].equivalencies = lunch_equivalencies
         self.plans[2].equivalencies = drink_equivalencies
         # The first explanations are the unobserved original trees
-        #self.explanations.extend([Plan(BreakfastNode()), Plan(LunchNode()), Plan(DrinkNode())])
         self.explanations = copy.deepcopy(self.plans)
 
     def calculate_eta(self):
@@ -375,7 +405,8 @@ class PlanLibrary:
         self.observations.append(observation)
         new_explanations = []   # We prepare a set of new explanations
         while self.explanations:
-            explanation = self.explanations.pop()   # We pop because it will become obsolete
+            # We pop the old explanation because the new observation will either refute or refine it
+            explanation = self.explanations.pop()
             indices = explanation.find_action_index(observation)    # Finds the relevant nodes
             if indices is not None:
                 # The action is present in this explanation
@@ -387,8 +418,8 @@ class PlanLibrary:
                         # Sets the new parameters
                         for property, value in parameters.items():
                             new_explanation.leaves[index].parameters[property] = value
-                        # Enforces the equivalencies todo
-                        #new_explanation.enforce_equivalencies()
+                        # Enforces the equivalencies
+                        new_explanation.propagate_equivalencies(explanation.leaves[index].id)
                         # All the unobserved nodes on the left-hand side should be marked as missed
                         for lhs_node in new_explanation.leaves[:index]:
                             if lhs_node.is_unobserved():

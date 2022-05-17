@@ -206,8 +206,12 @@ onto.verify_goal(g_s, debug=True)
 
 
 pl = PlanLibrary()
-pl.add_observation("Pick&Place", parameters={'item': 'meal', 'destination': 'hobs'})
-pl.add_observation("Pick&Place", parameters={'item': 'meal', 'destination': 'plate'})
+#pl.add_observation("Pick&Place", parameters={'item': 'meal', 'destination': 'hobs'})
+#pl.add_observation("Pick&Place", parameters={'item': 'meal', 'destination': 'plate'})
+#pl.add_observation("Cook", parameters={'food': 'meal', 'appliance': 'hobs'})
+#pl.add_observation("Sip", parameters={'beverage': 'water', 'vessel': 'glass'})
+pl.add_observation("Pick&Place", parameters={'item': 'biscuits', 'destination': 'plate'})
+pl.add_observation("Eat", parameters={'food': 'biscuits', 'vessel': 'plate'})
 
 pl.explain()
 
