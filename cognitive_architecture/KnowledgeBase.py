@@ -51,6 +51,9 @@ class GoalStatement:
         return "{0} {1} {2}\nFrontier: {3}".format(self.actor, self.goal.upper(), self.target,
                                                    [str(f) for f in self.frontier])
 
+    def __eq__(self, other):
+        return True if self.goal == other.goal and self.target == other.target else False
+
 
 class KnowledgeBase:
     # Saves the world in an SQLite3 file on disk instead of keeping it in memory

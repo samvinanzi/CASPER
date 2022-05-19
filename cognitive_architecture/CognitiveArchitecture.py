@@ -3,7 +3,7 @@ Cognitive Architecture
 """
 
 from cognitive_architecture.LowLevel import LowLevel
-from cognitive_architecture.HighLevel import HighLevel
+from cognitive_architecture.HighLevel_CRADLE import HighLevel
 from threading import Thread
 from cognitive_architecture.InternalComms import InternalComms
 

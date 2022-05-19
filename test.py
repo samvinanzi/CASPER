@@ -13,9 +13,10 @@ from cognitive_architecture.FocusBelief import FocusBelief
 #from owlready2 import *
 from cognitive_architecture.KnowledgeBase import ObservationStatement, KnowledgeBase, GoalStatement
 from cognitive_architecture.InternalComms import InternalComms
-from cognitive_architecture.HighLevel import HighLevel, Goal
+from cognitive_architecture.HighLevel_CRADLE import HighLevel, Goal
 from util.PathProvider import path_provider
 from cognitive_architecture.PlanLibrary import *
+from cognitive_architecture.HighLevel import HighLevel
 
 
 '''
@@ -204,20 +205,27 @@ g_s = GoalStatement("human", "LUNCH", "biscuits")
 onto.verify_goal(g_s, debug=True)
 """
 
+"""
+# PLAN-LIBRARY TEST
 
 pl = PlanLibrary()
-#pl.add_observation("Pick&Place", parameters={'item': 'meal', 'destination': 'hobs'})
+pl.add_observation("Pick&Place", parameters={'item': 'meal', 'destination': 'hobs'})
 #pl.add_observation("Pick&Place", parameters={'item': 'meal', 'destination': 'plate'})
 #pl.add_observation("Cook", parameters={'food': 'meal', 'appliance': 'hobs'})
 #pl.add_observation("Sip", parameters={'beverage': 'water', 'vessel': 'glass'})
-pl.add_observation("Pick&Place", parameters={'item': 'biscuits', 'destination': 'plate'})
-pl.add_observation("Eat", parameters={'food': 'biscuits', 'vessel': 'plate'})
+#pl.add_observation("Pick&Place", parameters={'item': 'biscuits', 'destination': 'plate'})
+#pl.add_observation("Eat", parameters={'food': 'biscuits', 'vessel': 'plate'})
 
-pl.explain()
+explanations = pl.get_explanations(render=True)
+#print(explanations[2].get_frontier())
 
 #for pl in pl.plans:
 #    pl.dot_render()
+"""
 
+hl = HighLevel()
+goal: Plan = hl.process(observation="Pick&Place", parameters={'item': 'meal', 'destination': 'hobs'})
+goal.render()
 
 print("\nDone")
 pass

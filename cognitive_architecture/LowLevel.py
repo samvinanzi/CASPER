@@ -14,7 +14,7 @@ from cognitive_architecture.Contextualizer import Contextualizer
 from cognitive_architecture.Bridge import Bridge
 from cognitive_architecture.InternalComms import InternalComms
 from cognitive_architecture.KnowledgeBase import kb, ObservationStatement
-from cognitive_architecture.HighLevel import Goal
+from cognitive_architecture.HighLevel_CRADLE import Goal
 import time
 from util.PathProvider import path_provider
 from cognitive_architecture.ObservationLibrary import ObservationLibrary

@@ -9,6 +9,7 @@ from anytree import NodeMixin, RenderTree, PreOrderIter
 from anytree.exporter import UniqueDotExporter
 from anytree.search import findall
 from enum import Enum
+from cognitive_architecture.KnowledgeBase import GoalStatement
 
 
 class Marker(Enum):
@@ -202,6 +203,32 @@ class Plan:
         self.score = 0
         self.equivalencies = None
 
+    def get_name_and_parameters(self):
+        """
+        Returns the name of the overall plan (aka the name of the root node)
+
+        @return: string name and dict parameters of the root node
+        """
+        return self.root.name, self.root.parameters
+
+    def get_first_parameter(self):
+        """
+        Returns the first item of the parameters dictionary, which should be the main one.
+
+        @return: First parameter value
+        """
+        return list(self.root.parameters.values())[0]
+
+    def is_parametrized(self):
+        """
+        Is the main parameter defined or does it have a None value?
+        This is useful to know if a goal was correctly parametrized or if the observation(s) are not sufficient to
+        determine the target of the intention.
+
+        @return: True or False
+        """
+        return True if self.get_first_parameter() is not None else False
+
     def find_action_index(self, action):
         """
         Searches for the specified node name in the leaves of the plan and returns the indices of the matches.
@@ -290,6 +317,24 @@ class Plan:
         for couple in self.equivalencies:
             if couple[0][1] != observation:
                 process_equivalency(couple)
+
+    def get_frontier(self):
+        """
+        Obtains a list of the unobserved actions.
+
+        @return: list of unobserved Nodes
+        """
+        return [node for node in self.leaves if node.marker == Marker.UNOBSERVED]
+
+    def to_goal_statement(self):
+        """
+        Creates a GoalStatement based on this plan, used for validation in the KnowledgeBase.
+
+        @return: GoalStatement
+        """
+        # todo this assumes the existence of only one human, has to be changed in the future
+        # todo Selecting the first element of a dict is not the best practice
+        return GoalStatement("human", self.root.name, list(self.root.parameters.values())[0], self.get_frontier())
 
     def render(self):
         """
@@ -400,6 +445,7 @@ class PlanLibrary:
         Calculates new explanations for the new observation.
 
         @param observation: Name of a node
+        @param parameters: dict of parameters
         @return: None
         """
         self.observations.append(observation)
@@ -439,19 +485,18 @@ class PlanLibrary:
         for explanation in self.explanations:
             explanation.score *= self.eta
 
-    def explain(self, sort=True):
+    def get_explanations(self, render=False):
         """
         Prints the current valid explanations, given the observations.
 
-        @param sort: if True, it will show the more likely explanations first.
-        @return: None
+        @return: list of Plans, ordered by probability
         """
+        output = None
         if len(self.explanations) == 0:
             print("No explanations!")
         else:
-            if sort:
-                set = sorted(self.explanations, key=lambda x: x.score, reverse=True)
-            else:
-                set = self.explanations
-            for exp in set:
-                exp.render()
+            output = sorted(self.explanations, key=lambda x: x.score, reverse=True)
+            if render:
+                for exp in output:
+                    exp.render()
+        return output
