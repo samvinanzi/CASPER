@@ -224,7 +224,9 @@ explanations = pl.get_explanations(render=True)
 """
 
 hl = HighLevel()
-goal: Plan = hl.process(observation="Pick&Place", parameters={'item': 'meal', 'destination': 'hobs'})
+goal: Plan = hl.process(observation="Pick&Place", parameters={'target': 'meal', 'destination': 'hobs'})
+#goal: Plan = hl.process(observation="Pick&Place", parameters={'item': 'meal', 'destination': 'hobs'})
+#goal: Plan = hl.process(observation="Pick&Place", parameters={'item': 'meal', 'destination': 'hobs'})
 goal.render()
 
 print("\nDone")

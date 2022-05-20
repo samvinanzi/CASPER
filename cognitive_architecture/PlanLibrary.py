@@ -460,12 +460,14 @@ class PlanLibrary:
                     # Process each possibility, generating a new tree for each one of them
                     if explanation.leaves[index].is_unobserved():
                         new_explanation: Plan = copy.deepcopy(explanation)
-                        new_explanation.leaves[index].mark(Marker.OBSERVED)     # Marks in the new tree
+                        node_of_interest = new_explanation.leaves[index]
+                        node_of_interest.mark(Marker.OBSERVED)     # Marks in the new tree
+                        # Matches the parameter names
+                        matched_params = dict(zip(node_of_interest.parameters.keys(), parameters.values()))
                         # Sets the new parameters
-                        for property, value in parameters.items():
-                            new_explanation.leaves[index].parameters[property] = value
+                        node_of_interest.parameters = matched_params
                         # Enforces the equivalencies
-                        new_explanation.propagate_equivalencies(explanation.leaves[index].id)
+                        new_explanation.propagate_equivalencies(node_of_interest.id)
                         # All the unobserved nodes on the left-hand side should be marked as missed
                         for lhs_node in new_explanation.leaves[:index]:
                             if lhs_node.is_unobserved():

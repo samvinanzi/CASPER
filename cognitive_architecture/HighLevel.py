@@ -11,6 +11,9 @@ from util.exceptions import GoalNotRecognizedException
 class HighLevel:
     def __init__(self):
         self.pl = PlanLibrary()
+        # This dictionary contains pre-validated or denied sets of goal + target (e.g. LUNCH 'meal' is a valid goal)
+        # They are stored here for persistence across multiple observations, which reduces resource-heavy calls
+        self.history = {'valid': [], 'invalid': []}
 
     def add_observation(self, observation, parameters):
         """
@@ -33,8 +36,6 @@ class HighLevel:
         valid_explanations = []     # The final output
         # Here we record goals which we have proven to be false, e.g. any variation of Breakfast with target = 'meal'
         # We do this to minimize the number of verifications that we perform, since they are resource-demanding
-        blacklist = []
-        whitelist = []
         exps = self.pl.get_explanations()
         for exp in exps:
             # Goals with a None main parameter are skipped
@@ -42,16 +43,16 @@ class HighLevel:
                 continue
             else:
                 gs = exp.to_goal_statement()
-                if gs in whitelist:         # The goal was already approved
+                if gs in self.history['valid']:         # The goal was already approved
                     valid_explanations.append(exp)
-                elif gs in blacklist:       # The goals was already disapproved
+                elif gs in self.history['invalid']:       # The goals was already disapproved
                     continue
                 else:                       # New goal, test it out
                     if kb.verify_goal(gs):
                         valid_explanations.append(exp)
-                        whitelist.append(gs)
+                        self.history['valid'].append(gs)
                     else:
-                        blacklist.append(gs)
+                        self.history['invalid'].append(gs)
         return valid_explanations
 
     def get_winner(self, explanations):
