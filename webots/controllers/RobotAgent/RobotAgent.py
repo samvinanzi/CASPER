@@ -6,16 +6,18 @@ TIAGo++: https://www.cyberbotics.com/doc/guide/tiagopp?version=master
 """
 
 import math
-import pickle
 import cProfile
 from Agent import Agent
 from controller import Field, InertialUnit, Motion, Node
 import os
-from qsrlib.qsrlib import QSRlib, QSRlib_Request_Message
 from qsrlib_io.world_trace import Object_State
 from cognitive_architecture.Episode import *
 from cognitive_architecture.CognitiveArchitecture import CognitiveArchitecture
 from util.PathProvider import path_provider
+from cognitive_architecture.QSRFactory import QSRFactory
+from multiprocessing import Event
+from datatypes.Synchronization import QSRSynch, SynchVariable
+from datatypes.Prediction import Prediction
 
 agents = ["HumanAgent"]                     # Humans and other robots will initially be unknown
 # Some environmental elements and the robot itself are not considered
@@ -25,20 +27,18 @@ included = ["human", "sink", "glass", "hobs", "biscuits", "meal", "plate", "bott
 class RobotAgent(Agent):
     def __init__(self):
         Agent.__init__(self)
-
         # World knowledge
-        self.last_timestep = -1             # Last discretized timestep in which activity was recorded
+        self.last_timestep = -1             # Last discrete timestep in which activity was recorded
         self.world_knowledge = {}           # Coordinates of all the entities in the world at present
         self.initialize_world_knowledge()
-        self.qsrlib = QSRlib()                 # Qualitative Spatial Relationship engine
-        #self.world_trace = World_Trace()          # Time-series coordinates of all the entities in the world
-        #self.update_world_trace()
-
-        # todo !
-        self.cognition = CognitiveArchitecture(mode="TEST")
-        self.cognition.start()
-        self.update_world_trace()
-        # todo !
+        # QSR factory and synchronization mechanisms
+        qsr_synch = QSRSynch()
+        self.qsr_factory = QSRFactory(qsr_synch)
+        # Set up the cognitive architecture process and its communication channels
+        #self.ca_conn, ca_side_conn = Pipe()
+        self.ca_conn = SynchVariable()
+        self.start_event = Event()
+        self.cognition = CognitiveArchitecture(self.ca_conn, qsr_synch, self.start_event, mode="TEST")
 
         # Devices
         self.motors = {'head_1': self.supervisor.getDevice("head_1_joint"),
@@ -69,6 +69,7 @@ class RobotAgent(Agent):
         self.camera.recognitionEnable(self.timestep)
         self.rangefinder.disable()
 
+        self.update_world_trace()
         print(str(self.__class__.__name__) + " has activated.")
 
     def initialize_world_knowledge(self):
@@ -166,8 +167,24 @@ class RobotAgent(Agent):
                         print("Added {0} to world trace in position [{1}, {2}] at timestamp {3}.".format(
                             new_os.name, new_os.x, new_os.y, new_os.timestamp))
             # Sends the new observations to the cognitive architecture
-            self.cognition.lowlevel.tq.add_observation(new_objects)
+            #self.cognition.lowlevel.qsr_queue.add_observation(new_objects)
+            #obs_library.add_observation(new_objects)
+            #self.send_observations(new_objects)
+            self.qsr_factory.add_observation(new_objects)
             self.last_timestep = current_timestep
+
+    '''
+    def send_observations(self, observations):
+        """
+        Sends a set of observations to the QSRFactory process.
+
+        @param observations: list of Object_State
+        @return: None
+        """
+        with self.obs_lock:
+            self.obs_queue.put(observations)
+            self.obs_event.set()
+    '''
 
     def calculate_human_orientation_vector(self, human_name, human_position):
         """
@@ -252,37 +269,35 @@ class RobotAgent(Agent):
         :param target_name: name of the node to follow.
         :return: None
         """
-        while self.step():
-            # Observe the environment for the specific target
-            objects = self.observe()
-            self.update_world_knowledge(objects, debug=False)
-            target = self.get_object_from_set(target_name, objects)
-            if target is not None:
-                # Calculate the distance from the center of the camera
-                position_on_image = target.get_position_on_image()
-                error = self.camera.getWidth() / 2 - position_on_image[0]
-                current_position = self.motors['head_1'].getTargetPosition()    # Head motor position
-                max_position = self.motors['head_1'].getMaxPosition()           # Head motor max rotation
-                # Minimum distance of the target from the center of the camera to initialize movement
-                deadzone = self.camera.getWidth() / 10
-                if math.fabs(error) > deadzone:
-                    diff = 0.02
-                    if error < 0:
-                        diff *= -1
+        # Observe the environment for the specific target
+        objects = self.observe()
+        self.update_world_knowledge(objects, debug=False)
+        target = self.get_object_from_set(target_name, objects)
+        if target is not None:
+            # Calculate the distance from the center of the camera
+            position_on_image = target.get_position_on_image()
+            error = self.camera.getWidth() / 2 - position_on_image[0]
+            current_position = self.motors['head_1'].getTargetPosition()    # Head motor position
+            max_position = self.motors['head_1'].getMaxPosition()           # Head motor max rotation
+            # Minimum distance of the target from the center of the camera to initialize movement
+            deadzone = self.camera.getWidth() / 10
+            if math.fabs(error) > deadzone:
+                diff = 0.02
+                if error < 0:
+                    diff *= -1
+            else:
+                diff = 0.0
+            new_position = current_position + diff
+            if math.fabs(new_position) > max_position:
+                new_position = 0.0
+                if error > 0:
+                    self.rotate(10.0, "left", observe=True)
                 else:
-                    diff = 0.0
-                new_position = current_position + diff
-                if math.fabs(new_position) > max_position:
-                    new_position = 0.0
-                    if error > 0:
-                        self.rotate(10.0, "left", observe=True)
-                    else:
-                        self.rotate(10.0, "right", observe=True)
-                self.motors['head_1'].setPosition(new_position)
-            #break
+                    self.rotate(10.0, "right", observe=True)
+            self.motors['head_1'].setPosition(new_position)
 
     def search_for(self, target_name):
-        """
+        """ca_conn
         Searches for a specific target node, rotating up to 360° to find it.
 
         :param target_name: Node name
@@ -345,15 +360,29 @@ class RobotAgent(Agent):
         else:
             print("[ERROR] Invalid motion name: {0}".format(motion_name))
 
+    def initialize(self):
+        # Neutral position
+        self.motion("neutral")
+        # Start the brain
+        self.cognition.start()
+        # Wait for the ok to start the subprocesses of cognition
+        self.cognition.start_event.wait()
+        # Fully boot the cognition
+        self.cognition.lowlevel.start()
+        self.cognition.highlevel.start()
+
 
 # MAIN LOOP
 
 def main():
     robot = RobotAgent()
-    # Perform simulation steps until Webots is stopping the controller
-    robot.motion("neutral")
+    robot.initialize()
     while robot.step():
-        if robot.is_camera_active():
+        # Fist of all, check if a goal was inferred
+        if robot.ca_conn.poll():
+            goal: Prediction = robot.ca_conn.get()
+            print("FRONTIER: {0}".format(goal.frontier))
+        elif robot.is_camera_active():
             if robot.search_for("pedestrian"):
                 robot.track_target("pedestrian")
                 #if robot.supervisor.getTime() >= 40:
@@ -366,7 +395,7 @@ def main():
             else:
                 print("I didn't find the human!")
 
-# Run this code to benchmark execution time
-cProfile.run('main()', sort='time')
-#main()
 
+# Run this code to benchmark execution time
+#cProfile.run('main()', sort='time')
+main()

@@ -2,6 +2,7 @@
 Low-Level cognitive architecture (from QSR to contextualized actions)
 """
 
+import time
 from cognitive_architecture.FocusBelief import FocusBelief
 from qsrlib.qsrlib import QSRlib, QSRlib_Request_Message
 from qsrlib_io.world_trace import World_Trace
@@ -11,24 +12,26 @@ from cognitive_architecture.TreeTrainer import TreeTrainer
 from cognitive_architecture.EpisodeFactory import EpisodeFactory
 from cognitive_architecture.MarkovFSM import ensemble
 from cognitive_architecture.Contextualizer import Contextualizer
-from cognitive_architecture.Bridge import Bridge
-from cognitive_architecture.InternalComms import InternalComms
 from cognitive_architecture.KnowledgeBase import kb, ObservationStatement
-from cognitive_architecture.HighLevel_CRADLE import Goal
-import time
+from datatypes.Prediction import Prediction
+from multiprocessing import Process
 from util.PathProvider import path_provider
-from cognitive_architecture.ObservationLibrary import ObservationLibrary
+
 
 BASEDIR = basedir = Path(__file__).parent.parent
 PICKLE_DIR = "data/pickle"
 SAVE_DIR = "data/cognition"
 
 
-class LowLevel:
-    def __init__(self, internal_comms):
-        self.tq = ObservationLibrary()
-        self.internal_comms: InternalComms = internal_comms
-        self.bridge: Bridge = Bridge()
+class LowLevel(Process):
+    def __init__(self, ca_conn, qsr_synch, mode):
+        super().__init__()
+        self.ca_conn = ca_conn
+        self.qsr_synch = qsr_synch
+        self.mode = mode
+        #self.qsr_queue = ObservationLibrary()
+        #self.internal_comms: InternalComms = internal_comms
+        #self.bridge: Bridge = Bridge()
         self.world_trace: World_Trace = World_Trace()
         self.qsrlib = QSRlib()
         self.which_qsr = ["argd", "qtcbs", "mos"]
@@ -79,14 +82,15 @@ class LowLevel:
         DEPRECATED. Observations are now done through ObervationLibrary.
         Observes a certain number of timesteps, collects the ObjectStates and adds them to the world trace.
 
-        :param to_observe: number of timesteps to observe
-        :return: The timestamp of the latest observation
+        @param to_observe: number of timesteps to observe
+        @return: The timestamp of the latest observation
         """
         assert to_observe > 0, "Must request observations for at least 1 timeframe."
         n = 0
         current_timestamp = 0
         while True:
-            observations = self.tq.get()    # Blocking call
+            #observations = self.qsr_queue.get()    # Blocking call
+            observations = obs_library.get()    # Blocking call
             if observations is not None:
                 for observation in observations:
                     self.world_trace.add_object_state(observation)
@@ -195,11 +199,13 @@ class LowLevel:
         return trainer.k_fold_cross_validation(min, max)
 
     def test(self, debug=False, save_focus=False):
-        goal_found = False
         latest_prediction_time = None
-        while not goal_found:
+        while True:
             # Collect the latest QSRs calculated from the observation of the environment
-            qsr_response, self.world_trace = self.tq.retrieve_qsrs()
+            qsr_response, self.world_trace = self.qsr_synch.get()
+            if qsr_response is None:
+                time.sleep(1)
+                continue
             last_state = qsr_response.qsrs.get_last_state()
             latest_timestamp = int(last_state.timestamp)
             print("#----------- TIME {0} -----------#".format(latest_timestamp))
@@ -209,6 +215,7 @@ class LowLevel:
                     print("Not enough data, continuing to observe...")
                 continue
             else:
+                # Build the current episode
                 factory = EpisodeFactory(self.world_trace, qsr_response)
                 # QTC is only calculated at step T-1, so we work with that one
                 episode = factory.build_episode(latest_timestamp-1)
@@ -218,7 +225,7 @@ class LowLevel:
                     continue
                 else:
                     # Assess the focus of the human to identify the object of interest
-                    objects_in_timestep = episode.get_objects_for("human")
+                    objects_in_timestep = episode.get_objects_for("human")  # todo multiple humans
                     for object in objects_in_timestep:
                         self.focus.add(object)
                     if save_focus:
@@ -255,32 +262,20 @@ class LowLevel:
                             # VERIFICATION
                             statement = ObservationStatement("human", ca, target, destination)  # todo multiple humans
                             if not kb.verify_observation(statement):
-                                if debug:
-                                    print("[ERROR] Action \"{0}\" is inconsistent with the ontology.".format(statement))
+                                print("Action \"{0}\" is inconsistent with the ontology, ignoring.".format(statement))
                                 continue
                             # Observations are only reset here because the predicted action might be inconsistent
                             latest_prediction_time = latest_timestamp
                             ensemble.empty_observations()
-                            # Retrieve the format of that action
-                            data = self.bridge.retrieve_data(ca)
-                            if data is None:
-                                continue
-                            if data.number_of_parameters() == 1:
-                                params = [target]
-                            else:
-                                params = [target, destination]
-                            self.bridge.append_observation(data, params)    # Writes the observation XML
-                            # Signal the high level to check the observations file
-                            self.internal_comms.put(True)
-                            # Gives HL time to fetch the data and detect a new goal
-                            time.sleep(1)  # todo more time?
-                            # Check if a goal was found
-                            goal: Goal = self.internal_comms.get_goal()
-                            if goal is not None:
-                                print("GOAL: {0}".format(goal))
-                                # Analyzes the frontier to see if it can collaborate (yet)
-                                frontier = goal.frontier
+                            # Send the observation to CA
+                            observation = Prediction(ca, {'target': target, 'destination': destination})
+                            self.ca_conn.set(observation)
+                            # Goes back to observing...
 
-                                #goal_found = True  # Exit condition
-        # Collaborate
-        # todo
+    def run(self) -> None:
+        print("{0} process is running.".format(self.__class__.__name__))
+        if self.mode.upper() == "TRAIN":
+            pass    # todo
+        else:
+            self.load()
+            self.test()

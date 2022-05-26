@@ -1,19 +1,16 @@
 """
-This class is activated by CognitiveArchitecture and is a middle-ground between the robot (producer) and the cognitive
-architecture (consumer). Visual observations are inserted and an up-to-date QSR library is maintained for the consumer
-to access whenever necessary.
-
+This class creates and maintains an up-to-date QSR library that can be accessed by a client (via synchronous
+mechanisms).
 By providing the consumer with the global set of QSRs, instead of the newest observation, latency problems between the
-two entities is addressed.
+two entities are addressed.
 """
 
-import time
 from qsrlib.qsrlib import QSRlib, QSRlib_Request_Message
 from qsrlib_io.world_trace import World_Trace
 from threading import Thread, Event, Lock
 
 
-class ObservationLibrary:
+class QSRFactory:
     class QSRParser:
         """
         This utility class parses the QSR Request Message.
@@ -77,7 +74,7 @@ class ObservationLibrary:
 
         def trim(self, critical_size=10):
             """
-            The size of world_trace can grow eccessively, significantly impacting the computation time. For this reason,
+            The size of world_trace can grow excessively, significantly impacting the computation time. For this reason,
             we decide to trim the lower-end of the world_trace to keep things running smoothly.
             In any case, the cognitive architecture always processes the results of the very last QSRs.
 
@@ -91,17 +88,14 @@ class ObservationLibrary:
                 trimming_point = int(critical_size / 2)
                 self.world_trace = self.world_trace.get_at_timestamp_range(start=latest_timestamp-trimming_point)
 
-    def __init__(self, debug=False):
+    def __init__(self, qsr_synch, debug=False):
         self.debug = debug
         self.qsr_parser = self.QSRParser()
-        # Protected variables
         self.observations = []
-        self.qsr = None
         # Synchronization entities
         self.observations_event = Event()
         self.observations_lock = Lock()
-        self.qsr_event = Event()
-        self.qsr_lock = Lock()
+        self.qsr_synch = qsr_synch
         # Initializes the processing thread
         t = Thread(target=self.process_observations)
         t.start()
@@ -116,12 +110,12 @@ class ObservationLibrary:
         with self.observations_lock:
             self.observations.extend(observation)
             if self.debug:
-                print("[OBSLIB] Producer inserted observation")
+                print("[OBS_FACTORY] Producer inserted observation")
         self.observations_event.set()
 
     def process_observations(self, debug=True):
         """
-        Thread that runs in background. As soon as new observartions are available, it produces a new set of QSRs and
+        Thread that runs in background. As soon as new observations are available, it produces a new set of QSRs and
         makes them available for the consumer.
 
         :return: None
@@ -129,12 +123,12 @@ class ObservationLibrary:
         while True:
             # Wait for an observation to happen
             if self.debug:
-                print("[OBSLIB] Waiting for a producer event...")
+                print("[OBS_FACTORY] Waiting for a producer event...")
             self.observations_event.wait()
             # Retrieve all the data
             with self.observations_lock:
                 if self.debug:
-                    print("[OBSLIB] Producer event detected! Fetching observations.")
+                    print("[OBS_FACTORY] Producer event detected! Fetching observations.")
                 observations = self.observations
             self.observations_event.clear()
             # Calculate the QSRs
@@ -146,23 +140,7 @@ class ObservationLibrary:
                 self.qsr_parser.trim()
                 qsr = self.qsr_parser.compute_qsr(show=False)
                 # Store the QSR library for the consumer
-                with self.qsr_lock:
-                    if self.debug:
-                        print("[OBSLIB] Updating the QSR Library with timestamp {0}.".format(
-                            len(self.qsr_parser.world_trace.get_sorted_timestamps())))
-                    self.qsr = qsr
-                self.qsr_event.set()
-
-    def retrieve_qsrs(self):
-        """
-        Method called by the consumer, which retrieves the latest QSRs.
-
-        :return: QRS response message
-        """
-        self.qsr_event.wait()
-        if self.debug:
-            print("[OBSLIB] Consumer accessing library.")
-        with self.qsr_lock:
-            qsr = self.qsr
-        self.qsr_event.clear()
-        return qsr
+                if self.debug:
+                    print("[OBSLIB] Updating the QSR Library with timestamp {0}.".format(
+                        len(self.qsr_parser.world_trace.get_sorted_timestamps())))
+                self.qsr_synch.set(qsr)

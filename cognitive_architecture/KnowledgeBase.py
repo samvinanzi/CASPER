@@ -125,7 +125,7 @@ class KnowledgeBase:
         return_value = queue.get()
         return return_value['consistent']
 
-    def verify_observation(self, observation_statement, infer=False, debug=True):
+    def verify_observation(self, observation_statement, infer=False, debug=False):
         """
         Verify if an observation statement is consistent with the ontology.
 
@@ -155,7 +155,6 @@ class KnowledgeBase:
                 setattr(actor, pd, destination)
             # Verification
             observation_statement.valid = self.verify_multiprocessing(engine="pellet", infer=infer)
-            #observation_statement.valid = self.verify(engine="pellet", infer=infer)
             # If we are inferring properties, these have to be saved in the original statement
             if infer:
                 target_individual = getattr(actor, pt)

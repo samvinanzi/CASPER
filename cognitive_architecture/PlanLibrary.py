@@ -10,6 +10,8 @@ from anytree.exporter import UniqueDotExporter
 from anytree.search import findall
 from enum import Enum
 from cognitive_architecture.KnowledgeBase import GoalStatement
+from datatypes.Prediction import Prediction
+from util.exceptions import GoalNotRecognizedException
 
 
 class Marker(Enum):
@@ -66,7 +68,7 @@ class PLNode(NodeMixin):
 
 class PnPNode(PLNode):
     def __init__(self, id=0, parent=None, children=None):
-        super().__init__(action="Pick&Place", id=id, parent=parent, children=children)
+        super().__init__(action="PICK AND PLACE", id=id, parent=parent, children=children)
         self.nt = False
         self.parameters = {
             "item": None,
@@ -76,7 +78,7 @@ class PnPNode(PLNode):
 
 class EatNode(PLNode):
     def __init__(self, id=0, parent=None, children=None):
-        super().__init__(action="Eat", id=id, parent=parent, children=children)
+        super().__init__(action="EAT", id=id, parent=parent, children=children)
         self.nt = False
         self.parameters = {
             "food": None,
@@ -86,7 +88,7 @@ class EatNode(PLNode):
 
 class SipNode(PLNode):
     def __init__(self, id=0, parent=None, children=None):
-        super().__init__(action="Sip", id=id, parent=parent, children=children)
+        super().__init__(action="SIP", id=id, parent=parent, children=children)
         self.nt = False
         self.parameters = {
             "beverage": None,
@@ -96,7 +98,7 @@ class SipNode(PLNode):
 
 class WashNode(PLNode):
     def __init__(self, id=0, parent=None, children=None):
-        super().__init__(action="Wash", id=id, parent=parent, children=children)
+        super().__init__(action="WASH", id=id, parent=parent, children=children)
         self.nt = False
         self.parameters = {
             "item": None,
@@ -106,7 +108,7 @@ class WashNode(PLNode):
 
 class CookNode(PLNode):
     def __init__(self, id=0, parent=None, children=None):
-        super().__init__(action="Cook", id=id, parent=parent, children=children)
+        super().__init__(action="COOK", id=id, parent=parent, children=children)
         self.nt = False
         self.parameters = {
             "food": None,
@@ -211,13 +213,20 @@ class Plan:
         """
         return self.root.name, self.root.parameters
 
-    def get_first_parameter(self):
+    def get_first_parameter(self, as_dict=False):
         """
         Returns the first item of the parameters dictionary, which should be the main one.
 
-        @return: First parameter value
+        @param as_dict: If True, returns a dictionary
+        @return: Either the first parameters value or the key:value dictionary
         """
-        return list(self.root.parameters.values())[0]
+        if as_dict:
+            d = {}
+            (k, v), *rest = self.root.parameters.items()
+            d[k] = v
+            return d
+        else:
+            return list(self.root.parameters.values())[0]
 
     def is_parametrized(self):
         """
@@ -336,6 +345,14 @@ class Plan:
         # todo Selecting the first element of a dict is not the best practice
         return GoalStatement("human", self.root.name, list(self.root.parameters.values())[0], self.get_frontier())
 
+    def to_prediction(self):
+        """
+        Converts a Plan into a Prediction object.
+
+        @return: Prediction
+        """
+        return Prediction(self.root.name, self.get_first_parameter(as_dict=True), self.score, self.get_frontier())
+
     def render(self):
         """
         Render the tree in the terminal.
@@ -358,6 +375,9 @@ class Plan:
         @return: None
         """
         UniqueDotExporter(self.root).to_picture("{0}.png".format(self.root.name))
+
+    def __str__(self):
+        return "{0} with parameters {1}".format(self.root.name, self.get_first_parameter(as_dict=True))
 
 
 class PlanLibrary:
@@ -496,6 +516,7 @@ class PlanLibrary:
         output = None
         if len(self.explanations) == 0:
             print("No explanations!")
+            raise GoalNotRecognizedException
         else:
             output = sorted(self.explanations, key=lambda x: x.score, reverse=True)
             if render:

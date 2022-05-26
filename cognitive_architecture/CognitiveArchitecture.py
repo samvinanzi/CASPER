@@ -3,30 +3,43 @@ Cognitive Architecture
 """
 
 from cognitive_architecture.LowLevel import LowLevel
-from cognitive_architecture.HighLevel_CRADLE import HighLevel
-from threading import Thread
-from cognitive_architecture.InternalComms import InternalComms
-
-DOMAIN_FILE = "Domain_kitchen_corrected.xml"
+from cognitive_architecture.HighLevel import HighLevel
+from multiprocessing import Process
+from datatypes.Synchronization import SynchVariable
 
 
-class CognitiveArchitecture(Thread):
-    def __init__(self, mode):
-        self.mode = mode.upper()
-        assert self.mode == "TRAIN" or mode == "TEST", "mode accepts parameters 'train' or 'test'."
-        Thread.__init__(self)
-        self.internal_comms = InternalComms()
-        self.lowlevel = LowLevel(self.internal_comms)
-        self.highlevel = HighLevel(self.internal_comms, DOMAIN_FILE, debug=True)    # No observations given on startup
+class CognitiveArchitecture(Process):
+    def __init__(self, robot_conn, qsr_synch, start_event, mode):
+        super().__init__()
+        assert mode.upper() == "TRAIN" or mode.upper() == "TEST", "mode accepts parameters 'train' or 'test'."
+        self.robot_conn = robot_conn
+        self.start_event = start_event
+        self.mode = mode
+        # Creates synchronized objects for LowLevel and HighLevel and initializes them
+        self.obs_from_ll_conn = SynchVariable()
+        self.lowlevel = LowLevel(self.obs_from_ll_conn, qsr_synch, mode)
+        self.obs_to_hl_conn = SynchVariable()
+        self.goal_from_hl_conn = SynchVariable()
+        self.highlevel = HighLevel(self.obs_to_hl_conn, self.goal_from_hl_conn)
 
-    def is_trainingmode(self):
-        return True if self.mode == "TRAIN" else False
+    def run(self) -> None:
+        print("{0} process is running in {1} mode.".format(self.__class__.__name__, self.mode))
+        # Instructs the main process to start the subprocesses (LL and HL)
+        self.start_event.set()
+        if not self.is_training():
+            while True:
+                # HL has the priority: check if a goal has been found
+                if self.goal_from_hl_conn.poll():
+                    goal = self.goal_from_hl_conn.get()
+                    # todo calculate the collaborative actions
+                    # Send the collaborative instructions to the Robot
+                    self.robot_conn.set(goal)
+                elif self.obs_from_ll_conn.poll():
+                    # If HL is silent, but LL has a new observation, add it to the poll
+                    observation = self.obs_from_ll_conn.get()
+                    self.obs_to_hl_conn.set(observation)
+        else:
+            self.lowlevel.start()
 
-    def run(self):
-        print("[DEBUG] " + self.__class__.__name__ + " thread is running in {0} mode.\n".format(self.mode))
-        if self.mode == "TRAIN":
-            self.lowlevel.train(min=0, max=0, save_id=None)
-        else:   # TEST
-            self.lowlevel.load()    # Reloads the trained models
-            self.highlevel.start()
-            self.lowlevel.test()
+    def is_training(self):
+        return True if self.mode.upper() == "TRAIN" else False

@@ -5,11 +5,16 @@ High-Level cognitive architecture (plan recognition using a probabilistic contex
 
 from cognitive_architecture.KnowledgeBase import kb
 from cognitive_architecture.PlanLibrary import PlanLibrary
+from datatypes.Prediction import Prediction
 from util.exceptions import GoalNotRecognizedException
+from multiprocessing import Process
 
 
-class HighLevel:
-    def __init__(self):
+class HighLevel(Process):
+    def __init__(self, input_conn, output_conn):
+        super().__init__()
+        self.input_conn = input_conn
+        self.output_conn = output_conn
         self.pl = PlanLibrary()
         # This dictionary contains pre-validated or denied sets of goal + target (e.g. LUNCH 'meal' is a valid goal)
         # They are stored here for persistence across multiple observations, which reduces resource-heavy calls
@@ -47,15 +52,16 @@ class HighLevel:
                     valid_explanations.append(exp)
                 elif gs in self.history['invalid']:       # The goals was already disapproved
                     continue
-                else:                       # New goal, test it out
-                    if kb.verify_goal(gs):
+                else:
+                    if kb.verify_goal(gs):  # New goal, test it out. Note: this is a resource-heavy operation!
                         valid_explanations.append(exp)
                         self.history['valid'].append(gs)
                     else:
                         self.history['invalid'].append(gs)
         return valid_explanations
 
-    def get_winner(self, explanations):
+    @staticmethod
+    def get_winner(explanations):
         """
         Retrieve a winner explanation, if it exists.
 
@@ -75,15 +81,20 @@ class HighLevel:
             # Multiple explanations with some ties between the top scored
             return None
 
-    def process(self, observation, parameters):
-        """
-        Main point of contact with this class. Adds the observation, creates explanations, filters out the invalid ones
-        and selects a winner.
-
-        @param observation: name of the action observed, str
-        @param parameters: parameters of the action, dict
-        @return: A Plan, if a winner exists, or None
-        """
-        self.add_observation(observation, parameters)
-        explanations = self.verify_explanations()
-        return self.get_winner(explanations)
+    def run(self) -> None:
+        print("{0} process is running.".format(self.__class__.__name__))
+        while True:
+            # Waits for an observation to be available
+            obs: Prediction = self.input_conn.get()
+            self.add_observation(obs.name, obs.param)
+            try:
+                explanations = self.verify_explanations()
+                goal = self.get_winner(explanations)
+                if goal:
+                    # If a goal was found, it communicates that to the CA
+                    print("- - - - < GOAL: {0} > - - - -".format(goal))
+                    self.output_conn.set(goal.to_prediction())
+                    break   # HighLevel has completed its task
+            except GoalNotRecognizedException:
+                print("This robot has failed in recognizing the goal :(")
+                break

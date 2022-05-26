@@ -1,23 +1,12 @@
+import multiprocessing.connection
+import random
 import time
 
-import cognitive_architecture.MarkovFSM
-import maps.Kitchen2
-import pickle
-import os
-import numpy as np
-from cognitive_architecture import *
-from util.PathProvider import path_provider
 import pandas as pd
 import matplotlib.pyplot as plt
-from cognitive_architecture.FocusBelief import FocusBelief
 #from owlready2 import *
-from cognitive_architecture.KnowledgeBase import ObservationStatement, KnowledgeBase, GoalStatement
-from cognitive_architecture.InternalComms import InternalComms
-from cognitive_architecture.HighLevel_CRADLE import HighLevel, Goal
 from util.PathProvider import path_provider
-from cognitive_architecture.PlanLibrary import *
-from cognitive_architecture.HighLevel import HighLevel
-
+from multiprocessing import Process, Pipe, Queue, Event, Lock
 
 '''
 factory = DataFrameFactory()
@@ -223,11 +212,101 @@ explanations = pl.get_explanations(render=True)
 #    pl.dot_render()
 """
 
+'''
 hl = HighLevel()
 goal: Plan = hl.process(observation="Pick&Place", parameters={'target': 'meal', 'destination': 'hobs'})
 #goal: Plan = hl.process(observation="Pick&Place", parameters={'item': 'meal', 'destination': 'hobs'})
 #goal: Plan = hl.process(observation="Pick&Place", parameters={'item': 'meal', 'destination': 'hobs'})
 goal.render()
+'''
+
+'''
+def f(conn, name):
+    conn.send([42, None, 'hello from {0}'.format(name)])
+    conn.send([42, None, 'hello from {0}'.format(name)])
+    conn.close()
+
+parent_conn1, child_conn1 = Pipe()
+parent_conn2, child_conn2 = Pipe()
+p1 = Process(target=f, args=(child_conn1, "p1"))
+p1.start()
+p2 = Process(target=f, args=(child_conn2, "p2"))
+p2.start()
+time.sleep(2)
+response = multiprocessing.connection.wait([parent_conn1, parent_conn2])
+print(response[0].recv())
+if parent_conn1 in response:
+    print("p1")
+else:
+    print("p2")
+p1.join()
+p2.join()
+'''
+
+'''
+from cognitive_architecture.QSR import QSRFactory, QSRLibrary
+from multiprocessing import Queue, Event, Lock, Pipe
+
+obs_queue = Queue()
+obs_event = Event()
+obs_lock = Lock()
+qsr_pipe_parent, qsr_pipe_child = Pipe()
+request_pipe_parent, request_pipe_child = Pipe()
+
+factory = QSRFactory(obs_queue, obs_event, obs_lock, qsr_pipe_parent, debug=True)
+factory.start()
+library = QSRLibrary(qsr_pipe_child, request_pipe_child, debug=True)
+library.start()
+
+import time
+
+def producer():
+    while True:
+        time.sleep(0.5)
+        with obs_lock:
+            print("[PRODUCER] inserting")
+            obs_queue.put("ciao")
+            obs_event.set()
+
+def consumer():
+    while True:
+        time.sleep(2)
+        print("[CONSUMER] Requesting")
+        request_pipe_parent.send(None)
+        response = request_pipe_parent.recv()
+        print(response)
+
+from threading import Thread
+
+t1 = Thread(target=producer)
+t2 = Thread(target=consumer)
+t1.start()
+t2.start()
+'''
+
+from datatypes.Synchronization import SynchVariable
+
+sv = SynchVariable()
+
+def producer(sv):
+    for i in range(5):
+        print("Setting {0}".format(i))
+        sv.set(i)
+        #time.sleep(1)
+
+def consumer(sv):
+    while True:
+        value = sv.get()
+        print(value)
+
+
+t1 = Process(target=producer, args=(sv,))
+t2 = Process(target=consumer, args=(sv,))
+t1.start()
+t2.start()
+
+t2.join()
+
 
 print("\nDone")
 pass
