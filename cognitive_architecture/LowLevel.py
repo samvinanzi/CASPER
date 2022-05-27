@@ -29,9 +29,6 @@ class LowLevel(Process):
         self.ca_conn = ca_conn
         self.qsr_synch = qsr_synch
         self.mode = mode
-        #self.qsr_queue = ObservationLibrary()
-        #self.internal_comms: InternalComms = internal_comms
-        #self.bridge: Bridge = Bridge()
         self.world_trace: World_Trace = World_Trace()
         self.qsrlib = QSRlib()
         self.which_qsr = ["argd", "qtcbs", "mos"]
@@ -89,8 +86,7 @@ class LowLevel(Process):
         n = 0
         current_timestamp = 0
         while True:
-            #observations = self.qsr_queue.get()    # Blocking call
-            observations = obs_library.get()    # Blocking call
+            observations = self.qsr_synch.get()    # Blocking call
             if observations is not None:
                 for observation in observations:
                     self.world_trace.add_object_state(observation)
@@ -208,7 +204,7 @@ class LowLevel(Process):
                 continue
             last_state = qsr_response.qsrs.get_last_state()
             latest_timestamp = int(last_state.timestamp)
-            print("#----------- TIME {0} -----------#".format(latest_timestamp))
+            #print("#----------- TIME {0} -----------#".format(latest_timestamp))
             # QSRs can be computed only if there are at least 2 timestamps in the world trace
             if not len(self.world_trace.get_sorted_timestamps()) >= 2:      # We work with T-1 (see below)
                 if debug:
@@ -238,13 +234,13 @@ class LowLevel(Process):
                             print("No clear focus yet, observing...")
                         continue    # If no confident focus predictions were made, we need to observe more
                     else:
-                        print("FOCUS: target: {0}, destination: {1}".format(target, destination))
+                        #print("FOCUS: target: {0}, destination: {1}".format(target, destination))
                         # We have a target: add it to the episode and generate a feature
                         episode.humans["human"].target = target
                         feature = episode.to_feature(human="human", train=False)
                         # Classify the target's set of QSRs into a Movement
                         movement = self.tree.predict(feature)[0]
-                        print("MOVEMENT: {0}".format(movement))
+                        #print("MOVEMENT: {0}".format(movement))
                         # Add the Movement to the Markovian finite-state machine to predict a temporal Action
                         if not latest_prediction_time or latest_timestamp - latest_prediction_time > 2: # testing this
                             ensemble.add_observation(movement)
@@ -258,16 +254,17 @@ class LowLevel(Process):
                             ctx = Contextualizer()
                             # The second item of the focus is the destination
                             ca = ctx.give_context(action, destination)
-                            print("ACTION: {0} {1} {2}".format(ca, target, destination))
+                            print("Time {0}\nACTION: {1} {2} {3}".format(latest_timestamp, ca, target, destination),
+                                  end=" ")
                             # VERIFICATION
                             statement = ObservationStatement("human", ca, target, destination)  # todo multiple humans
                             if not kb.verify_observation(statement):
-                                print("Action \"{0}\" is inconsistent with the ontology, ignoring.".format(statement))
+                                print("(ignoring)")
                                 continue
                             # Observations are only reset here because the predicted action might be inconsistent
                             latest_prediction_time = latest_timestamp
                             ensemble.empty_observations()
-                            # Send the observation to CA
+                            # Send the observation to CognitiveArchitecture
                             observation = Prediction(ca, {'target': target, 'destination': destination})
                             self.ca_conn.set(observation)
                             # Goes back to observing...

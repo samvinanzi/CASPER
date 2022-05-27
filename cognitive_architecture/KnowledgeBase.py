@@ -21,19 +21,13 @@ class ObservationStatement:
         if self.action.lower() == "pick and place":
             self.action = "PNP"
 
-    @staticmethod
-    def from_NT(nt):
-        # Creates a statement from the frontier of an explanation
-        action = nt._ch.removesuffix('NT')
-        target = nt._params[0][1]
-        try:
-            destination = nt._params[1][1]
-        except IndexError:
-            destination = None
-        return ObservationStatement("human", action, target, destination)
-
     def __str__(self):
         return "{0} {1} {2} {3}".format(self.actor, self.action.upper(), self.target, self.destination)
+
+    def __eq__(self, other):
+        assert isinstance(other, ObservationStatement)
+        return True if self.actor == other.actor and self.action == other.action and self.target == other.target and \
+                       self.destination == other.destination else False
 
 
 class GoalStatement:
@@ -52,6 +46,7 @@ class GoalStatement:
                                                    [str(f) for f in self.frontier])
 
     def __eq__(self, other):
+        assert isinstance(other, GoalStatement)
         return True if self.goal == other.goal and self.target == other.target else False
 
 
@@ -65,6 +60,7 @@ class KnowledgeBase:
         default_world.save()
         self.op = [property.name for property in self.onto.object_properties()]     # All the object properties names
         self.individuals = [individual for individual in self.onto.individuals()]   # All the individuals
+        self.history = {'valid': [], 'invalid': []}
 
     def find_individual(self, name):
         """
@@ -98,10 +94,8 @@ class KnowledgeBase:
                 else:
                     sync_reasoner_pellet(self.onto, infer_property_values=infer, debug=0)
                 return_value['consistent'] = True
-                #return True
             except OwlReadyInconsistentOntologyError:
                 return_value['consistent'] = False
-                #return False
             finally:
                 queue.put(return_value)
 
@@ -125,6 +119,21 @@ class KnowledgeBase:
         return_value = queue.get()
         return return_value['consistent']
 
+    def check_history(self, statement):
+        """
+        To save resources, checks if this specific statement hasn't already been processed in the past.
+
+        @param statement: ObservationStatement or GoalStatement
+        @return: True or False if found, None if not yet processed
+        """
+        assert isinstance(statement, ObservationStatement)
+        if statement in self.history['valid']:
+            return True
+        elif statement in self.history['invalid']:
+            return False
+        else:
+            return None
+
     def verify_observation(self, observation_statement, infer=False, debug=False):
         """
         Verify if an observation statement is consistent with the ontology.
@@ -135,6 +144,10 @@ class KnowledgeBase:
         @return: True or False
         """
         assert isinstance(observation_statement, ObservationStatement), "Input must be an ObservationStatement."
+        if not infer:
+            observation_statement.valid = self.check_history(observation_statement)
+            if observation_statement.valid is not None:
+                return observation_statement.valid
         # Finds the individuals referred by the statement
         actor = self.find_individual(observation_statement.actor)
         action = observation_statement.action
@@ -155,6 +168,11 @@ class KnowledgeBase:
                 setattr(actor, pd, destination)
             # Verification
             observation_statement.valid = self.verify_multiprocessing(engine="pellet", infer=infer)
+            # Add it to the list of statements already processed
+            if observation_statement.valid:
+                self.history['valid'].append(observation_statement)
+            else:
+                self.history['invalid'].append(observation_statement)
             # If we are inferring properties, these have to be saved in the original statement
             if infer:
                 target_individual = getattr(actor, pt)
@@ -181,6 +199,13 @@ class KnowledgeBase:
         @return: True or False
         """
         assert isinstance(goal_statement, GoalStatement), "Input must be a GoalStatement."
+        # Check if the goal was already
+        if goal_statement in self.history['valid']:
+            goal_statement.valid = True
+            return True
+        elif goal_statement in self.history['invalid']:
+            goal_statement.valid = False
+            return False
         # Finds the individuals referred by the statement
         actor = self.find_individual(goal_statement.actor)
         goal = self.find_individual(goal_statement.goal.lower())
@@ -192,7 +217,6 @@ class KnowledgeBase:
         setattr(goal, "involves_object", target)
         # Verification
         goal_statement.valid = self.verify_multiprocessing()
-        #goal_statement.valid = self.verify()
         # Resets the individuals for the next tests
         setattr(actor, "has_goal", None)
         setattr(goal, "involves_object", None)

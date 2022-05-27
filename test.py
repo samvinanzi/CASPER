@@ -1,12 +1,10 @@
 import multiprocessing.connection
 import random
 import time
-
 import pandas as pd
 import matplotlib.pyplot as plt
-#from owlready2 import *
 from util.PathProvider import path_provider
-from multiprocessing import Process, Pipe, Queue, Event, Lock
+import pickle
 
 '''
 factory = DataFrameFactory()
@@ -66,46 +64,6 @@ context = list(focus.get_top_n_items(2))[1]
 '''
 
 
-'''
-bridge = Bridge()
-data = bridge.retrieve_data("pick and place")
-bridge.append_observation(data, ['biscuits', 'plate'])
-data = bridge.retrieve_data("eat")
-bridge.append_observation(data, ['biscuits'])
-
-ic = InternalComms()
-
-hl = HighLevel(ic, 'Domain_kitchen.xml', debug=True)
-hl.use_observation_file('Observations.xml')
-exps = hl.explain(debug=False)
-hl.parse_explanations(exps)
-'''
-
-'''
-ic = InternalComms()
-hl = HighLevel(ic, 'Domain_kitchen.xml')
-hl.start()
-bridge = Bridge()
-time.sleep(1)
-print("About to insert pnp...")
-data = bridge.retrieve_data("pick and place")
-bridge.append_observation(data, ['biscuits', 'plate'])
-ic.put(True)
-time.sleep(2)
-print("About to insert eat...")
-data = bridge.retrieve_data("eat")
-bridge.append_observation(data, ['biscuits'])
-ic.put(True)
-'''
-
-'''
-from util.PathProvider import PathProvider
-
-pp = PathProvider()
-print(pp.get_pickle(''))
-'''
-
-
 def plot_focus():
     plt.gcf().set_dpi(300)
     headers = ["time", "sink", "glass", "hobs", "biscuits", "meal", "plate", "bottle"]
@@ -143,36 +101,6 @@ for index, row in df.iterrows():
     #input("\nPress Enter to continue...")
 """
 
-
-# CRADLE-TEST
-"""
-
-DOMAIN = path_provider.get_domain("lunch.xml")
-OBSERVATIONS = path_provider.get_domain("Observations_example.xml")
-#OBSERVATIONS = path_provider.get_observations()
-
-internal_comms = InternalComms()
-highlevel = HighLevel(internal_comms, DOMAIN, OBSERVATIONS, debug=True)
-
-exps = highlevel.explain(debug=True)
-print(exps)
-
-kb = KnowledgeBase('kitchen_onto')
-
-if exps:
-    goals = highlevel.parse_explanations(exps, debug=True)
-
-#for goal in [goals]:
-#    print(goal)
-
-#goals = []
-#for exp in exps:
-#    new_goal = Goal()
-#    new_goal.parse_from_explanation(exp)
-#    print("Goal: {0}\nValid: {1}\n".format(new_goal, new_goal.validate()))
-#    kb.verify_frontier("human", new_goal.to_goal_statement())
-#    goals.append(new_goal)
-"""
 
 """
 kb = KnowledgeBase('kitchen_onto')
@@ -220,92 +148,14 @@ goal: Plan = hl.process(observation="Pick&Place", parameters={'target': 'meal', 
 goal.render()
 '''
 
-'''
-def f(conn, name):
-    conn.send([42, None, 'hello from {0}'.format(name)])
-    conn.send([42, None, 'hello from {0}'.format(name)])
-    conn.close()
+# ACTION COLLABORATION
 
-parent_conn1, child_conn1 = Pipe()
-parent_conn2, child_conn2 = Pipe()
-p1 = Process(target=f, args=(child_conn1, "p1"))
-p1.start()
-p2 = Process(target=f, args=(child_conn2, "p2"))
-p2.start()
-time.sleep(2)
-response = multiprocessing.connection.wait([parent_conn1, parent_conn2])
-print(response[0].recv())
-if parent_conn1 in response:
-    print("p1")
-else:
-    print("p2")
-p1.join()
-p2.join()
-'''
+goal = pickle.load(open(path_provider.get_save('GOALTREE.p'), "rb"))
 
-'''
-from cognitive_architecture.QSR import QSRFactory, QSRLibrary
-from multiprocessing import Queue, Event, Lock, Pipe
-
-obs_queue = Queue()
-obs_event = Event()
-obs_lock = Lock()
-qsr_pipe_parent, qsr_pipe_child = Pipe()
-request_pipe_parent, request_pipe_child = Pipe()
-
-factory = QSRFactory(obs_queue, obs_event, obs_lock, qsr_pipe_parent, debug=True)
-factory.start()
-library = QSRLibrary(qsr_pipe_child, request_pipe_child, debug=True)
-library.start()
-
-import time
-
-def producer():
-    while True:
-        time.sleep(0.5)
-        with obs_lock:
-            print("[PRODUCER] inserting")
-            obs_queue.put("ciao")
-            obs_event.set()
-
-def consumer():
-    while True:
-        time.sleep(2)
-        print("[CONSUMER] Requesting")
-        request_pipe_parent.send(None)
-        response = request_pipe_parent.recv()
-        print(response)
-
-from threading import Thread
-
-t1 = Thread(target=producer)
-t2 = Thread(target=consumer)
-t1.start()
-t2.start()
-'''
-
-from datatypes.Synchronization import SynchVariable
-
-sv = SynchVariable()
-
-def producer(sv):
-    for i in range(5):
-        print("Setting {0}".format(i))
-        sv.set(i)
-        #time.sleep(1)
-
-def consumer(sv):
-    while True:
-        value = sv.get()
-        print(value)
+#plan = make_plan(goal)
 
 
-t1 = Process(target=producer, args=(sv,))
-t2 = Process(target=consumer, args=(sv,))
-t1.start()
-t2.start()
 
-t2.join()
 
 
 print("\nDone")

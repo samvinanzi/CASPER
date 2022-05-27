@@ -30,10 +30,12 @@ class CognitiveArchitecture(Process):
             while True:
                 # HL has the priority: check if a goal has been found
                 if self.goal_from_hl_conn.poll():
-                    goal = self.goal_from_hl_conn.get()
-                    # todo calculate the collaborative actions
+                    plan = self.goal_from_hl_conn.get()
+                    #import pickle
+                    #from util.PathProvider import path_provider
+                    #pickle.dump(goal, open(path_provider.get_save('GOALTREE.p'), "wb"))
                     # Send the collaborative instructions to the Robot
-                    self.robot_conn.set(goal)
+                    self.robot_conn.set(plan)
                 elif self.obs_from_ll_conn.poll():
                     # If HL is silent, but LL has a new observation, add it to the poll
                     observation = self.obs_from_ll_conn.get()

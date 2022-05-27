@@ -9,7 +9,7 @@ from anytree import NodeMixin, RenderTree, PreOrderIter
 from anytree.exporter import UniqueDotExporter
 from anytree.search import findall
 from enum import Enum
-from cognitive_architecture.KnowledgeBase import GoalStatement
+from cognitive_architecture.KnowledgeBase import ObservationStatement, GoalStatement
 from datatypes.Prediction import Prediction
 from util.exceptions import GoalNotRecognizedException
 
@@ -59,6 +59,16 @@ class PLNode(NodeMixin):
         """
         assert isinstance(mark, Marker), "Invalid mark provided."
         self.marker = mark
+
+    def to_observation_statement(self, actor):
+        """
+        Returns an ObservationStatement.
+
+        @param actor: Name of the actor (could be used for the human or the robot)
+        @return: ObservationStatement
+        """
+        parameters = list(self.parameters.values())
+        return ObservationStatement(actor, self.name, parameters[0], parameters[1])
 
     def __str__(self):
         return "{0} {1}".format(self.name, self.parameters)
@@ -342,7 +352,6 @@ class Plan:
         @return: GoalStatement
         """
         # todo this assumes the existence of only one human, has to be changed in the future
-        # todo Selecting the first element of a dict is not the best practice
         return GoalStatement("human", self.root.name, list(self.root.parameters.values())[0], self.get_frontier())
 
     def to_prediction(self):
@@ -460,12 +469,13 @@ class PlanLibrary:
         except ZeroDivisionError:
             self.eta = 0
 
-    def add_observation(self, observation, parameters):
+    def add_observation(self, observation, parameters, ignore=False):
         """
         Calculates new explanations for the new observation.
 
         @param observation: Name of a node
         @param parameters: dict of parameters
+        @param ignore: if True, ignores observations which would refute old observations
         @return: None
         """
         self.observations.append(observation)
@@ -494,6 +504,9 @@ class PlanLibrary:
                                 lhs_node.mark(Marker.MISSED)
                         new_explanation.calculate_score()   # Calculates the score of the individual explanation
                         new_explanations.append(new_explanation)
+                    elif ignore:
+                        # If in 'ignore' mode, re-insert an explanation for which no observations could be matched
+                        new_explanations.append(explanation)
         self.explanations.extend(new_explanations)
         self.normalize_scores()
 

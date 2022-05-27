@@ -312,7 +312,6 @@ class RobotAgent(Agent):
             target = self.get_object_from_set(target_name, objects)
             if target is None:
                 frames_no_target += 1
-                print("No target, {0}".format(frames_no_target))
                 # This should refrain the robot from rotating if it looses sight of the human for just a moment, for
                 # example during a temporary occlusion.
                 if frames_no_target >= 100:
@@ -380,8 +379,10 @@ def main():
     while robot.step():
         # Fist of all, check if a goal was inferred
         if robot.ca_conn.poll():
-            goal: Prediction = robot.ca_conn.get()
-            print("FRONTIER: {0}".format(goal.frontier))
+            plan = robot.ca_conn.get()
+            print("I am now ready to act. This is what I will do:")
+            for action in plan:
+                print("{0}{1}".format(action.name, action.parameters))
         elif robot.is_camera_active():
             if robot.search_for("pedestrian"):
                 robot.track_target("pedestrian")

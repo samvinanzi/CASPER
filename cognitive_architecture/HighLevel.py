@@ -4,10 +4,11 @@ High-Level cognitive architecture (plan recognition using a probabilistic contex
 """
 
 from cognitive_architecture.KnowledgeBase import kb
-from cognitive_architecture.PlanLibrary import PlanLibrary
+from cognitive_architecture.PlanLibrary import PlanLibrary, Plan
 from datatypes.Prediction import Prediction
 from util.exceptions import GoalNotRecognizedException
 from multiprocessing import Process
+from itertools import groupby
 
 
 class HighLevel(Process):
@@ -20,7 +21,7 @@ class HighLevel(Process):
         # They are stored here for persistence across multiple observations, which reduces resource-heavy calls
         self.history = {'valid': [], 'invalid': []}
 
-    def add_observation(self, observation, parameters):
+    def add_observation(self, observation, parameters, ignore=False):
         """
         Wrapper to add an observation to the PlanLibrary.
 
@@ -30,7 +31,7 @@ class HighLevel(Process):
         """
         assert isinstance(observation, str), "Observation must be the name of an action."
         assert isinstance(parameters, dict), "Parameters must be a dictionary of parameters."
-        self.pl.add_observation(observation, parameters)
+        self.pl.add_observation(observation, parameters, ignore)
 
     def verify_explanations(self):
         """
@@ -47,6 +48,8 @@ class HighLevel(Process):
             if not exp.is_parametrized():
                 continue
             else:
+                # Note: I'm not using KnowledgeBase's intrinsic history because there is a risk of conflict with
+                # LowLevel and it's not worth implementing additional synchronization just for this.
                 gs = exp.to_goal_statement()
                 if gs in self.history['valid']:         # The goal was already approved
                     valid_explanations.append(exp)
@@ -81,20 +84,82 @@ class HighLevel(Process):
             # Multiple explanations with some ties between the top scored
             return None
 
+    @staticmethod
+    def make_plan(goal: Plan):
+        """
+        Creates a collaborative plan based on a goal's frontier. It calculates which actions are executable by the robot
+        and finds the longest subsequence of actions that the agent can perform.
+
+        @param goal: Plan
+        @return: list of PLNodes
+        """
+        # Ignore the very first action: it's likely the human will perform that one
+        original_frontier = goal.get_frontier()
+        new_frontier = original_frontier[1:]
+        # Verifies which actions are performable by the robot
+        performable = [False] * len(new_frontier)
+        for i, action in enumerate(new_frontier):
+            obs = action.to_observation_statement("tiago")  # todo multiple robots
+            valid = kb.verify_observation(obs)
+            performable[i] = valid
+        # Finds the longest subsequence
+        start = 0
+        runs = []
+        for key, run in groupby(performable):
+            length = sum(1 for _ in run)
+            runs.append((start, start + length - 1))
+            start += length
+        result = max(runs, key=lambda x: x[1] - x[0])
+        # todo This works on the assumption that the human does not operate after the robot.
+        human_side = new_frontier[:result[0]]
+        robot_side = new_frontier[result[0]:result[1]+1]
+        return human_side, robot_side
+
+    def has_human_completed(self, human_plan):
+        """
+        Verifies if a human plan was completed. This happens when all the nodes are either observed or missed.
+        @param human_plan: list of PLNodes
+        @return: True or False
+        """
+        # Each observation can produce multiple explanations. It is important to verify all of them.
+        for explanation in self.pl.explanations:
+            for action in human_plan:
+                node_in_pl = explanation.get_node_by_id(action.id)
+                if node_in_pl.is_unobserved():
+                    return False
+            return True
+
     def run(self) -> None:
         print("{0} process is running.".format(self.__class__.__name__))
+        human_plan = None
+        robot_plan = None
         while True:
+            # Are we in phase 2 (plan filling)?
+            phase2 = False if human_plan is None and robot_plan is None else True
             # Waits for an observation to be available
             obs: Prediction = self.input_conn.get()
-            self.add_observation(obs.name, obs.param)
-            try:
-                explanations = self.verify_explanations()
-                goal = self.get_winner(explanations)
-                if goal:
-                    # If a goal was found, it communicates that to the CA
-                    print("- - - - < GOAL: {0} > - - - -".format(goal))
-                    self.output_conn.set(goal.to_prediction())
-                    break   # HighLevel has completed its task
-            except GoalNotRecognizedException:
-                print("This robot has failed in recognizing the goal :(")
-                break
+            # Adds it to the plan library
+            self.add_observation(obs.name, obs.param, ignore=phase2)
+            if not phase2:
+                # If HL is still searching for a goal, produce explanations
+                try:
+                    explanations = self.verify_explanations()
+                    goal = self.get_winner(explanations)
+                    if goal:
+                        print("- - - - < GOAL: {0} > - - - -".format(goal))
+                        # Cancel every other explanation
+                        self.pl.explanations = [goal]
+                        # Decide on a collaboration plan
+                        human_plan, robot_plan = self.make_plan(goal)
+                        print("Waiting for the human to accomplish the following:\n")
+                        for action in human_plan:
+                            print("{0}{1}".format(action.name, action.parameters))
+                except GoalNotRecognizedException:
+                    print("This robot has failed in recognizing the goal :(")
+                    break
+            else:
+                # HL has already predicted a goal and is now waiting for the right time to act
+                if self.has_human_completed(human_plan):
+                    # The human has completed their part of the plan. Signal the CA.
+                    self.output_conn.set(robot_plan)
+                    break
