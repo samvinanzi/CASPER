@@ -325,6 +325,36 @@ class HumanAgent(Agent):
             print("Couldn't find target: {0}".format(target_name))
         return False
 
+    def approach_coordinates(self, coordinates, speed=None, debug=False):
+        """
+        Same as approach_target, but moves to certain coordinates instead of referencing a node in the environment.
+
+        :param coordinates: (X,Z) tuple
+        :return: True if successful, False otherwise
+        """
+        assert isinstance(coordinates, tuple), "Must specify a tuple (X,Z) to walk to"
+        # Trace a path to the destination
+        print("Path planning, please wait...")
+        path = self.path_planning(coordinates, show=False)
+        print("Path found!")
+        if path is not None:
+            print("Walking towards {0}".format(coordinates))
+            # Updates the training fields
+            if self.object_in_hand:
+                self.update_training_label("TRANSPORT")
+                # If they are transporting, the target is the object, nor the destination
+                self.update_training_target(self.get_in_hand_name())
+            else:
+                self.update_training_label("WALK")
+                #self.update_training_target(coordinates)
+            for waypoint in path:
+                self.walk_simplified(waypoint, speed=speed, debug=False)        #todo re-enable if required
+            self.turn_towards(coordinates)
+            return True
+        else:
+            print("Couldn't path plan to {0}!".format(coordinates))
+        return False
+
     def path_planning(self, goal, show=False):
         """
         Finds a path to reach a goal.
@@ -645,7 +675,7 @@ class HumanAgent(Agent):
         :return None
         """
         self.busy_waiting(3, label="STILL")
-        self.walk_simplified(coordinates, speed=0.2)
+        self.approach_coordinates(coordinates, speed=2)
         self.busy_waiting(3, label="STILL")
 
     # GOALS #
@@ -662,6 +692,8 @@ class HumanAgent(Agent):
         if not with_collab:
             self.pick_and_place("plate", "sink")
             self.use("plate", "sink")
+        else:
+            self.relocate((1.4688, 2.11786))    # Return to the original starting position
 
     def lunch(self, with_collab=False):
         """
@@ -677,6 +709,8 @@ class HumanAgent(Agent):
         if not with_collab:
             self.pick_and_place("plate", "sink")
             self.use("plate", "sink")
+        else:
+            self.relocate((1.4688, 2.11786))    # Return to the original starting position
 
     def drink(self, with_collab=False):
         """
@@ -690,6 +724,8 @@ class HumanAgent(Agent):
         if not with_collab:
             self.pick_and_place("glass", "sink")
             self.use("glass", "sink")
+        else:
+            self.relocate((1.4688, 2.11786))    # Return to the original starting position
 
     def calculate_orientation_vector(self):
         """

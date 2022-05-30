@@ -151,9 +151,9 @@ class HighLevel(Process):
                         self.pl.explanations = [goal]
                         # Decide on a collaboration plan
                         human_plan, robot_plan = self.make_plan(goal)
-                        print("Waiting for the human to accomplish the following:\n")
+                        print("Waiting for the human to accomplish the following:")
                         for action in human_plan:
-                            print("{0}{1}".format(action.name, action.parameters))
+                            print("\t{0}{1}".format(action.name, action.parameters))
                 except GoalNotRecognizedException:
                     print("This robot has failed in recognizing the goal :(")
                     break

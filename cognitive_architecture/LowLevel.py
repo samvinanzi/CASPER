@@ -254,13 +254,11 @@ class LowLevel(Process):
                             ctx = Contextualizer()
                             # The second item of the focus is the destination
                             ca = ctx.give_context(action, destination)
-                            print("Time {0}\nACTION: {1} {2} {3}".format(latest_timestamp, ca, target, destination),
-                                  end=" ")
                             # VERIFICATION
                             statement = ObservationStatement("human", ca, target, destination)  # todo multiple humans
                             if not kb.verify_observation(statement):
-                                print("(ignoring)")
                                 continue
+                            print("Time {0}\nACTION: {1} {2} {3}".format(latest_timestamp, ca, target, destination))
                             # Observations are only reset here because the predicted action might be inconsistent
                             latest_prediction_time = latest_timestamp
                             ensemble.empty_observations()
