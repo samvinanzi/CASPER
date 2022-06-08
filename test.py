@@ -3,6 +3,8 @@ import random
 import time
 import pandas as pd
 import matplotlib.pyplot as plt
+
+from cognitive_architecture.KnowledgeBase import KnowledgeBase, ObservationStatement
 from util.PathProvider import path_provider
 import pickle
 
@@ -112,15 +114,15 @@ kb.verify_observation(os2, debug=True)
 kb.verify_observation(os3, debug=True)
 """
 
-"""
+
 # ONTOLOGY-TEST
 
 onto = KnowledgeBase('kitchen_onto')
-ob_s = ObservationStatement("human", "COOK", "meal", "hobs")
-onto.verify_observation(ob_s, debug=True)
-g_s = GoalStatement("human", "LUNCH", "biscuits")
-onto.verify_goal(g_s, debug=True)
-"""
+ob_s = ObservationStatement("human", "SIP", "glass", "bottle")
+onto.verify_observation(ob_s, debug=True, infer=True)
+#g_s = GoalStatement("human", "LUNCH", "biscuits")
+#onto.verify_goal(g_s, debug=True)
+
 
 """
 # PLAN-LIBRARY TEST
@@ -150,7 +152,7 @@ goal.render()
 
 # ACTION COLLABORATION
 
-goal = pickle.load(open(path_provider.get_save('GOALTREE.p'), "rb"))
+#goal = pickle.load(open(path_provider.get_save('GOALTREE.p'), "rb"))
 
 #plan = make_plan(goal)
 

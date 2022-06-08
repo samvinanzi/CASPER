@@ -22,9 +22,6 @@ class HumanAgent(Agent):
         assert mode.upper() == "TRAIN" or mode.upper() == "TEST", "mode must be TEST or TRAIN."
         self.mode = mode
 
-        self.object_in_hand: Node = None
-        #self.object_in_hand_physics: Node = None   todo investigate this later, maybe
-
         # Enables and disables devices
         self.camera.disable()
         #self.camera.recognitionEnable(self.timestep)
@@ -35,7 +32,6 @@ class HumanAgent(Agent):
         self.WALK_SEQUENCES_NUMBER = 8
         self.ROOT_HEIGHT = 1.27
         self.CYCLE_TO_DISTANCE_RATIO = 0.22
-        self.speed = .5
         self.joints_position_field = []
         self.joint_names = [
             "leftArmAngle", "leftLowerArmAngle", "leftHandAngle",
@@ -76,24 +72,6 @@ class HumanAgent(Agent):
         object_held_field.setSFInt32(0)
 
         print(str(self.__class__.__name__) + " has activated.")
-
-    def get_robot_position(self):
-        """
-        Using Supervisor functions, obtains the 2D (x,z) position of the robot.
-
-        :return: (x,z) position of the robot
-        """
-        return self.convert_to_2d_coords(self.supervisor.getSelf().getPosition())
-
-    def get_robot_orientation(self):
-        """
-        Using Supervisor functions, obtains the rotation matrix of the robot.
-
-        :return: 3x3 rotation matrix
-        """
-        orientation = np.array(self.supervisor.getSelf().getOrientation())
-        orientation = orientation.reshape(3, 3)
-        return orientation
 
     def get_in_hand_name(self):
         """
@@ -719,7 +697,8 @@ class HumanAgent(Agent):
         @param with_collab: if True, the human will expect the robot to collaborate
         @return: None
         """
-        self.pick_and_place("bottle", "worktop(4)")
+        #self.pick_and_place("bottle", "worktop(4)")
+        self.pick_and_place("bottle", "glass")
         self.use("glass", "bottle")
         if not with_collab:
             self.pick_and_place("glass", "sink")
@@ -773,8 +752,8 @@ def main():
     while human.step():
         human.busy_waiting(1, label="STILL")    # Intro
         #human.breakfast(with_collab=True)
-        human.lunch(with_collab=True)
-        #human.drink(with_collab=True)
+        #human.lunch(with_collab=True)
+        human.drink(with_collab=True)
         human.busy_waiting(-1, label="STILL")   # Outro
         break
 

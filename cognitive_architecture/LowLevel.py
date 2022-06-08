@@ -204,7 +204,8 @@ class LowLevel(Process):
                 continue
             last_state = qsr_response.qsrs.get_last_state()
             latest_timestamp = int(last_state.timestamp)
-            #print("#----------- TIME {0} -----------#".format(latest_timestamp))
+            if debug:
+                print("#----------- TIME {0} -----------#".format(latest_timestamp))
             # QSRs can be computed only if there are at least 2 timestamps in the world trace
             if not len(self.world_trace.get_sorted_timestamps()) >= 2:      # We work with T-1 (see below)
                 if debug:
@@ -234,13 +235,15 @@ class LowLevel(Process):
                             print("No clear focus yet, observing...")
                         continue    # If no confident focus predictions were made, we need to observe more
                     else:
-                        #print("FOCUS: target: {0}, destination: {1}".format(target, destination))
+                        if debug:
+                            print("FOCUS: target: {0}, destination: {1}".format(target, destination))
                         # We have a target: add it to the episode and generate a feature
                         episode.humans["human"].target = target
                         feature = episode.to_feature(human="human", train=False)
                         # Classify the target's set of QSRs into a Movement
                         movement = self.tree.predict(feature)[0]
-                        #print("MOVEMENT: {0}".format(movement))
+                        if debug:
+                            print("MOVEMENT: {0}".format(movement))
                         # Add the Movement to the Markovian finite-state machine to predict a temporal Action
                         if not latest_prediction_time or latest_timestamp - latest_prediction_time > 2: # testing this
                             ensemble.add_observation(movement)
@@ -256,9 +259,14 @@ class LowLevel(Process):
                             ca = ctx.give_context(action, destination)
                             # VERIFICATION
                             statement = ObservationStatement("human", ca, target, destination)  # todo multiple humans
+                            if debug:
+                                print("ACTION: {0} {1} {2}".format(ca, target, destination), end=" ")
                             if not kb.verify_observation(statement):
+                                if debug:
+                                    print("(ignoring)")
                                 continue
-                            print("Time {0}\nACTION: {1} {2} {3}".format(latest_timestamp, ca, target, destination))
+                            if not debug:
+                                print("Time {0}\nACTION: {1} {2} {3}".format(latest_timestamp, ca, target, destination))
                             # Observations are only reset here because the predicted action might be inconsistent
                             latest_prediction_time = latest_timestamp
                             ensemble.empty_observations()

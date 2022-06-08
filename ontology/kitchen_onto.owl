@@ -156,7 +156,14 @@
     <owl:ObjectProperty rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#sip_destination">
         <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#FunctionalProperty"/>
         <rdfs:domain rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Human"/>
-        <rdfs:range rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#WaterBottle"/>
+        <rdfs:range>
+            <owl:Class>
+                <owl:unionOf rdf:parseType="Collection">
+                    <rdf:Description rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Glass"/>
+                    <rdf:Description rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#WaterBottle"/>
+                </owl:unionOf>
+            </owl:Class>
+        </rdfs:range>
     </owl:ObjectProperty>
     
 
@@ -166,7 +173,14 @@
     <owl:ObjectProperty rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#sip_target">
         <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#FunctionalProperty"/>
         <rdfs:domain rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Human"/>
-        <rdfs:range rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Glass"/>
+        <rdfs:range>
+            <owl:Class>
+                <owl:unionOf rdf:parseType="Collection">
+                    <rdf:Description rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Glass"/>
+                    <rdf:Description rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#WaterBottle"/>
+                </owl:unionOf>
+            </owl:Class>
+        </rdfs:range>
         <rdfs:range>
             <owl:Restriction>
                 <owl:onProperty rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#drinkable"/>
@@ -349,6 +363,17 @@
     
 
 
+    <!-- http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#invalid -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#invalid">
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#FunctionalProperty"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Agent"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#boolean"/>
+        <rdfs:comment xml:lang="en">This property is used to infer invalid predicates. If certain conditions happen, a SWRL rule will set it to True.</rdfs:comment>
+    </owl:DatatypeProperty>
+    
+
+
     <!-- http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#moveable -->
 
     <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#moveable">
@@ -452,7 +477,15 @@
 
     <!-- http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Agent -->
 
-    <owl:Class rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Agent"/>
+    <owl:Class rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Agent">
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#invalid"/>
+                <owl:qualifiedCardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">0</owl:qualifiedCardinality>
+                <owl:onDataRange rdf:resource="http://www.w3.org/2001/XMLSchema#boolean"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+    </owl:Class>
     
 
 
@@ -1063,8 +1096,57 @@
     <rdf:Description rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/untitled-ontology-3#et">
         <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#Variable"/>
     </rdf:Description>
+    <rdf:Description rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/untitled-ontology-3#dest">
+        <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#Variable"/>
+    </rdf:Description>
     <rdf:Description rdf:about="http://www.semanticweb.org/samuele/ontologies/2022/3/untitled-ontology-3#wt">
         <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#Variable"/>
+    </rdf:Description>
+    <rdf:Description>
+        <swrla:isRuleEnabled rdf:datatype="http://www.w3.org/2001/XMLSchema#boolean">true</swrla:isRuleEnabled>
+        <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string"></rdfs:comment>
+        <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Cooking is done in hobs</rdfs:label>
+        <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#Imp"/>
+        <swrl:body>
+            <rdf:Description>
+                <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#AtomList"/>
+                <rdf:first>
+                    <rdf:Description>
+                        <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#ClassAtom"/>
+                        <swrl:classPredicate rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Agent"/>
+                        <swrl:argument1 rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/untitled-ontology-3#a"/>
+                    </rdf:Description>
+                </rdf:first>
+                <rdf:rest>
+                    <rdf:Description>
+                        <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#AtomList"/>
+                        <rdf:first>
+                            <rdf:Description>
+                                <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#IndividualPropertyAtom"/>
+                                <swrl:propertyPredicate rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#cook_target"/>
+                                <swrl:argument1 rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/untitled-ontology-3#a"/>
+                                <swrl:argument2 rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/untitled-ontology-3#ct"/>
+                            </rdf:Description>
+                        </rdf:first>
+                        <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+                    </rdf:Description>
+                </rdf:rest>
+            </rdf:Description>
+        </swrl:body>
+        <swrl:head>
+            <rdf:Description>
+                <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#AtomList"/>
+                <rdf:first>
+                    <rdf:Description>
+                        <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#IndividualPropertyAtom"/>
+                        <swrl:propertyPredicate rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#cook_destination"/>
+                        <swrl:argument1 rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/untitled-ontology-3#a"/>
+                        <swrl:argument2 rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#hobs"/>
+                    </rdf:Description>
+                </rdf:first>
+                <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+            </rdf:Description>
+        </swrl:head>
     </rdf:Description>
     <rdf:Description>
         <swrla:isRuleEnabled rdf:datatype="http://www.w3.org/2001/XMLSchema#boolean">true</swrla:isRuleEnabled>
@@ -1115,6 +1197,148 @@
     <rdf:Description>
         <swrla:isRuleEnabled rdf:datatype="http://www.w3.org/2001/XMLSchema#boolean">true</swrla:isRuleEnabled>
         <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string"></rdfs:comment>
+        <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Biscuits only on plate</rdfs:label>
+        <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#Imp"/>
+        <swrl:body>
+            <rdf:Description>
+                <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#AtomList"/>
+                <rdf:first>
+                    <rdf:Description>
+                        <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#ClassAtom"/>
+                        <swrl:classPredicate rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Agent"/>
+                        <swrl:argument1 rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/untitled-ontology-3#a"/>
+                    </rdf:Description>
+                </rdf:first>
+                <rdf:rest>
+                    <rdf:Description>
+                        <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#AtomList"/>
+                        <rdf:first>
+                            <rdf:Description>
+                                <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#IndividualPropertyAtom"/>
+                                <swrl:propertyPredicate rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#pnp_target"/>
+                                <swrl:argument1 rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/untitled-ontology-3#a"/>
+                                <swrl:argument2 rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#biscuits"/>
+                            </rdf:Description>
+                        </rdf:first>
+                        <rdf:rest>
+                            <rdf:Description>
+                                <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#AtomList"/>
+                                <rdf:first>
+                                    <rdf:Description>
+                                        <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#IndividualPropertyAtom"/>
+                                        <swrl:propertyPredicate rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#pnp_destination"/>
+                                        <swrl:argument1 rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/untitled-ontology-3#a"/>
+                                        <swrl:argument2 rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/untitled-ontology-3#dest"/>
+                                    </rdf:Description>
+                                </rdf:first>
+                                <rdf:rest>
+                                    <rdf:Description>
+                                        <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#AtomList"/>
+                                        <rdf:first>
+                                            <rdf:Description>
+                                                <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#DifferentIndividualsAtom"/>
+                                                <swrl:argument1 rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/untitled-ontology-3#dest"/>
+                                                <swrl:argument2 rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#plate"/>
+                                            </rdf:Description>
+                                        </rdf:first>
+                                        <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+                                    </rdf:Description>
+                                </rdf:rest>
+                            </rdf:Description>
+                        </rdf:rest>
+                    </rdf:Description>
+                </rdf:rest>
+            </rdf:Description>
+        </swrl:body>
+        <swrl:head>
+            <rdf:Description>
+                <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#AtomList"/>
+                <rdf:first>
+                    <rdf:Description>
+                        <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#DatavaluedPropertyAtom"/>
+                        <swrl:propertyPredicate rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#invalid"/>
+                        <swrl:argument1 rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/untitled-ontology-3#a"/>
+                        <swrl:argument2 rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</swrl:argument2>
+                    </rdf:Description>
+                </rdf:first>
+                <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+            </rdf:Description>
+        </swrl:head>
+    </rdf:Description>
+    <rdf:Description>
+        <swrla:isRuleEnabled rdf:datatype="http://www.w3.org/2001/XMLSchema#boolean">true</swrla:isRuleEnabled>
+        <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string"></rdfs:comment>
+        <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Bottle only on glass</rdfs:label>
+        <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#Imp"/>
+        <swrl:body>
+            <rdf:Description>
+                <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#AtomList"/>
+                <rdf:first>
+                    <rdf:Description>
+                        <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#ClassAtom"/>
+                        <swrl:classPredicate rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Agent"/>
+                        <swrl:argument1 rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/untitled-ontology-3#a"/>
+                    </rdf:Description>
+                </rdf:first>
+                <rdf:rest>
+                    <rdf:Description>
+                        <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#AtomList"/>
+                        <rdf:first>
+                            <rdf:Description>
+                                <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#IndividualPropertyAtom"/>
+                                <swrl:propertyPredicate rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#pnp_target"/>
+                                <swrl:argument1 rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/untitled-ontology-3#a"/>
+                                <swrl:argument2 rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#bottle"/>
+                            </rdf:Description>
+                        </rdf:first>
+                        <rdf:rest>
+                            <rdf:Description>
+                                <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#AtomList"/>
+                                <rdf:first>
+                                    <rdf:Description>
+                                        <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#IndividualPropertyAtom"/>
+                                        <swrl:propertyPredicate rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#pnp_destination"/>
+                                        <swrl:argument1 rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/untitled-ontology-3#a"/>
+                                        <swrl:argument2 rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/untitled-ontology-3#dest"/>
+                                    </rdf:Description>
+                                </rdf:first>
+                                <rdf:rest>
+                                    <rdf:Description>
+                                        <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#AtomList"/>
+                                        <rdf:first>
+                                            <rdf:Description>
+                                                <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#DifferentIndividualsAtom"/>
+                                                <swrl:argument1 rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/untitled-ontology-3#dest"/>
+                                                <swrl:argument2 rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#glass"/>
+                                            </rdf:Description>
+                                        </rdf:first>
+                                        <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+                                    </rdf:Description>
+                                </rdf:rest>
+                            </rdf:Description>
+                        </rdf:rest>
+                    </rdf:Description>
+                </rdf:rest>
+            </rdf:Description>
+        </swrl:body>
+        <swrl:head>
+            <rdf:Description>
+                <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#AtomList"/>
+                <rdf:first>
+                    <rdf:Description>
+                        <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#DatavaluedPropertyAtom"/>
+                        <swrl:propertyPredicate rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#invalid"/>
+                        <swrl:argument1 rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/untitled-ontology-3#a"/>
+                        <swrl:argument2 rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">1</swrl:argument2>
+                    </rdf:Description>
+                </rdf:first>
+                <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+            </rdf:Description>
+        </swrl:head>
+    </rdf:Description>
+    <rdf:Description>
+        <swrla:isRuleEnabled rdf:datatype="http://www.w3.org/2001/XMLSchema#boolean">true</swrla:isRuleEnabled>
+        <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string"></rdfs:comment>
         <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Washing is done in sink</rdfs:label>
         <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#Imp"/>
         <swrl:body>
@@ -1152,52 +1376,6 @@
                         <swrl:propertyPredicate rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#wash_destination"/>
                         <swrl:argument1 rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/untitled-ontology-3#a"/>
                         <swrl:argument2 rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#sink"/>
-                    </rdf:Description>
-                </rdf:first>
-                <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
-            </rdf:Description>
-        </swrl:head>
-    </rdf:Description>
-    <rdf:Description>
-        <swrla:isRuleEnabled rdf:datatype="http://www.w3.org/2001/XMLSchema#boolean">true</swrla:isRuleEnabled>
-        <rdfs:comment rdf:datatype="http://www.w3.org/2001/XMLSchema#string"></rdfs:comment>
-        <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">Cooking is done in hobs</rdfs:label>
-        <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#Imp"/>
-        <swrl:body>
-            <rdf:Description>
-                <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#AtomList"/>
-                <rdf:first>
-                    <rdf:Description>
-                        <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#ClassAtom"/>
-                        <swrl:classPredicate rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#Agent"/>
-                        <swrl:argument1 rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/untitled-ontology-3#a"/>
-                    </rdf:Description>
-                </rdf:first>
-                <rdf:rest>
-                    <rdf:Description>
-                        <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#AtomList"/>
-                        <rdf:first>
-                            <rdf:Description>
-                                <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#IndividualPropertyAtom"/>
-                                <swrl:propertyPredicate rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#cook_target"/>
-                                <swrl:argument1 rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/untitled-ontology-3#a"/>
-                                <swrl:argument2 rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/untitled-ontology-3#ct"/>
-                            </rdf:Description>
-                        </rdf:first>
-                        <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
-                    </rdf:Description>
-                </rdf:rest>
-            </rdf:Description>
-        </swrl:body>
-        <swrl:head>
-            <rdf:Description>
-                <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#AtomList"/>
-                <rdf:first>
-                    <rdf:Description>
-                        <rdf:type rdf:resource="http://www.w3.org/2003/11/swrl#IndividualPropertyAtom"/>
-                        <swrl:propertyPredicate rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#cook_destination"/>
-                        <swrl:argument1 rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/untitled-ontology-3#a"/>
-                        <swrl:argument2 rdf:resource="http://www.semanticweb.org/samuele/ontologies/2022/3/kitchen_onto#hobs"/>
                     </rdf:Description>
                 </rdf:first>
                 <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
