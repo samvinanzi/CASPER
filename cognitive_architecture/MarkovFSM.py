@@ -141,15 +141,11 @@ class EnsembleFSM:
         if input_size == 1:
             # If it's the very first insertion, initiate the sample with the detected movement
             self.init_sampling(self.filtered_observations[0])
-        #if input_size < 3:
-        #    return None, None, False    # Early observation that will likely match with the starting state
         top_score = -1.0
         top_model = None
         tie = False
         for model in self.models:
-            #sample = model.sample[:input_size]
             sample = model.sample
-            #print("Sample from model {0} is {1}".format(model.name, sample))
             score = similar(refactor(self.filtered_observations), refactor(sample))
             if score >= top_score:
                 if score == top_score:  # There is a tie, register both names
@@ -160,14 +156,46 @@ class EnsembleFSM:
                 else:
                     top_score = score
                     top_model = model.name
+                    tie = False
         if not tie:
             return top_model, top_score, top_score >= threshold
         else:
             return top_model, top_score / len(top_model), False     # A tie never wins
 
+    def get_scores(self):
+        """
+        Calculates the normalized scores that each model obtains on the observations.
+
+        @return: Array of scores.
+        """
+        def similar(a, b):
+            return SequenceMatcher(None, a, b).ratio()
+
+        def refactor(list_sample):
+            output = ''
+            for word in list_sample:
+                output += word[0]
+            return output
+
+        input_size = len(self.filtered_observations)
+        if input_size == 1:
+            # If it's the very first insertion, initiate the sample with the detected movement
+            self.init_sampling(self.filtered_observations[0])
+        scores = [0, 0, 0]
+        for i, model in enumerate(self.models):
+            sample = model.sample
+            score = similar(refactor(self.filtered_observations), refactor(sample))
+            scores[i] = score
+        # Normalization
+        #eta = 1 / sum(scores)
+        #for i, score in enumerate(scores):
+        #    scores[i] *= eta
+        return scores
+
     def evaluate(self):
         """
         Debug function to evaluate the training data. Prints some accuracy metrics.
+        Does not work anymore due to modifications on the sampling algorithm.
 
         :return: None
         """

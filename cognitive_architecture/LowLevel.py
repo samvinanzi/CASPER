@@ -7,6 +7,7 @@ from cognitive_architecture.FocusBelief import FocusBelief
 from qsrlib.qsrlib import QSRlib, QSRlib_Request_Message
 from qsrlib_io.world_trace import World_Trace
 import pickle
+import csv
 from pathlib import Path
 from cognitive_architecture.TreeTrainer import TreeTrainer
 from cognitive_architecture.EpisodeFactory import EpisodeFactory
@@ -194,7 +195,7 @@ class LowLevel(Process):
         trainer = TreeTrainer()
         return trainer.k_fold_cross_validation(min, max)
 
-    def test(self, debug=False, save_focus=False):
+    def test(self, debug=True, save_focus=False):
         latest_prediction_time = None
         while True:
             # Collect the latest QSRs calculated from the observation of the environment
@@ -246,6 +247,8 @@ class LowLevel(Process):
                             print("MOVEMENT: {0}".format(movement))
                         # Add the Movement to the Markovian finite-state machine to predict a temporal Action
                         if not latest_prediction_time or latest_timestamp - latest_prediction_time > 2: # testing this
+                            # todo testing, remove when not needed
+                            #self.save_log_data(path_provider.get_csv('pnp0.csv'), movement)
                             ensemble.add_observation(movement)
                         action, score, winner = ensemble.best_model()   # Try to predict an Action
                         if not winner:
@@ -274,6 +277,18 @@ class LowLevel(Process):
                             observation = Prediction(ca, {'target': target, 'destination': destination})
                             self.ca_conn.set(observation)
                             # Goes back to observing...
+
+    def save_log_data(self, file, data):
+        """
+        Saves some data to a file. Used to log parts of the execution.
+
+        @param file: file path
+        @param data: data to save
+        @return: None
+        """
+        with open(file, 'a') as f:
+            writer = csv.writer(f)
+            writer.writerow([data])
 
     def run(self) -> None:
         print("{0} process is running.".format(self.__class__.__name__))

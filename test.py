@@ -3,10 +3,16 @@ import random
 import time
 import pandas as pd
 import matplotlib.pyplot as plt
-
+from scipy.interpolate import make_interp_spline
+import numpy as np
 from cognitive_architecture.KnowledgeBase import KnowledgeBase, ObservationStatement
 from util.PathProvider import path_provider
 import pickle
+from scipy.ndimage.filters import gaussian_filter1d
+from scipy.interpolate import interp1d
+from cognitive_architecture.MarkovFSM import ensemble
+import util.plots
+
 
 '''
 factory = DataFrameFactory()
@@ -114,7 +120,7 @@ kb.verify_observation(os2, debug=True)
 kb.verify_observation(os3, debug=True)
 """
 
-
+"""
 # ONTOLOGY-TEST
 
 onto = KnowledgeBase('kitchen_onto')
@@ -122,7 +128,7 @@ ob_s = ObservationStatement("human", "SIP", "glass", "bottle")
 onto.verify_observation(ob_s, debug=True, infer=True)
 #g_s = GoalStatement("human", "LUNCH", "biscuits")
 #onto.verify_goal(g_s, debug=True)
-
+"""
 
 """
 # PLAN-LIBRARY TEST
@@ -156,7 +162,7 @@ goal.render()
 
 #plan = make_plan(goal)
 
-
+util.plots.test_fsm(save=True, name='fsm_pnp.png')
 
 
 

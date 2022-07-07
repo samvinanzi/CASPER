@@ -11,7 +11,7 @@ from datatypes.Synchronization import SynchVariable
 class CognitiveArchitecture(Process):
     def __init__(self, robot_conn, qsr_synch, start_event, mode):
         super().__init__()
-        assert mode.upper() == "TRAIN" or mode.upper() == "TEST", "mode accepts parameters 'train' or 'test'."
+        assert mode.upper() in ['TRAIN', 'TEST'], "mode accepted values: 'train', 'test'."
         self.robot_conn = robot_conn
         self.start_event = start_event
         self.mode = mode
@@ -31,9 +31,6 @@ class CognitiveArchitecture(Process):
                 # HL has the priority: check if a goal has been found
                 if self.goal_from_hl_conn.poll():
                     plan = self.goal_from_hl_conn.get()
-                    #import pickle
-                    #from util.PathProvider import path_provider
-                    #pickle.dump(goal, open(path_provider.get_save('GOALTREE.p'), "wb"))
                     # Send the collaborative instructions to the Robot
                     self.robot_conn.set(plan)
                 elif self.obs_from_ll_conn.poll():
