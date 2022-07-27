@@ -4,6 +4,8 @@ from scipy.interpolate import make_interp_spline
 import numpy as np
 from util.PathProvider import path_provider
 from cognitive_architecture.MarkovFSM import ensemble
+import time
+from cognitive_architecture.PlanLibrary import GoalNotRecognizedException
 
 
 def plot_focus():
@@ -22,13 +24,15 @@ def plot_focus():
         plt.savefig(path_provider.get_image("{0}.png".format(item)))
 
 
-def test_fsm(save=False, name="fsm_test.png"):
-    # PNP
-    observations = ['STILL', 'WALK', 'PICK', 'TRANSPORT', 'PLACE', 'PICK', 'STILL', 'WALK', 'STILL']
-    # USE
-    #observations = ['STILL', 'WALK', 'PICK', 'PLACE', 'PICK', 'PLACE', 'PICK', 'PLACE', 'STILL']
-    # RELOCATE
-    #observations = ['STILL', 'WALK', 'STILL', 'WALK', 'STILL', 'WALK', 'STILL', 'WALK', 'STILL']
+def test_fsm(name, save=False):
+    assert name.upper() in ['PNP', 'USE', 'REL'], "Name should be one of: pnp, use, rel."
+    if name.upper() == 'PNP':
+        observations = ['STILL', 'WALK', 'PICK', 'TRANSPORT', 'PLACE', 'PICK', 'STILL', 'WALK', 'STILL']
+    elif name.upper() == 'USE':
+        observations = ['STILL', 'WALK', 'PICK', 'PLACE', 'PICK', 'PLACE', 'PICK', 'PLACE', 'STILL']
+    else:
+        observations = ['STILL', 'WALK', 'STILL', 'WALK', 'STILL', 'WALK', 'STILL', 'WALK', 'STILL']
+    filename = 'fsm_{0}.png'.format(name.lower())
     # NOISY PNP
     #observations = ['STILL', 'WALK', 'STILL', 'PICK', 'TRANSPORT', 'PLACE', 'PICK', 'STILL', 'WALK']
     m1 = []
@@ -50,6 +54,7 @@ def test_fsm(save=False, name="fsm_test.png"):
             percent = round((i + 1) / len(observations), 2)
             print(percent)
             moment = i
+            print("Guessed in {0}".format(i+1))
     # Plot
     x = np.array(list(range(len(observations))))
     X_ = np.linspace(x.min(), x.max(), 500)
@@ -67,8 +72,8 @@ def test_fsm(save=False, name="fsm_test.png"):
     #plt.plot(x, m2, label="Use", alpha=0.5, c='black')
     #plt.plot(x, m3, label="Relocate", alpha=0.5, c='red')
     # Winning moment, if exists
-    #if moment is not None:
-    #    plt.axvline(x=moment, color='gray', linestyle='--')
+    if moment is not None:
+        plt.axvline(x=moment, color='gray', linestyle='--', alpha=0.4)
     plt.legend(loc='lower left')
     plt.xlabel('Timestep')
     plt.ylabel('Similarity index')
@@ -77,4 +82,40 @@ def test_fsm(save=False, name="fsm_test.png"):
     if not save:
         plt.show()
     else:
-        plt.savefig(path_provider.get_image(name))
+        plt.savefig(path_provider.get_image(filename))
+
+
+def test_pl(pl, action, params):
+    pl.add_observation(action, params)
+    # Explanations
+    tic = time.time()
+    try:
+        exps = pl.get_explanations()
+    except GoalNotRecognizedException:
+        exps = []
+    toc = time.time() - tic
+    ms = round(toc * 1000000, 2)
+    n = len(exps)
+    # Outcome
+    if n == 0:
+        # No explanation found
+        out = None
+        print("FAILURE")
+    elif n == 1:
+        # One explanation found
+        out = exps[0]
+    elif exps[0].score != exps[1].score:
+        # Multiple explanations, but with a clear winner
+        out = exps[0]
+    else:
+        # Multiple explanations with some ties between the top scored
+        out = None
+    # Confidence
+    if n > 0:
+        confidence = exps[0].score
+    else:
+        confidence = 0.0
+    confidence = round(confidence, 2)
+    print("Action: {0}\nExplanations: {1}\nOutcome: {2}\nTime: {3}\nConfidence: {4}".format(action, n, out, ms,
+                                                                                            confidence))
+    print("------------------")

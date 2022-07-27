@@ -25,11 +25,12 @@ SAVE_DIR = "data/cognition"
 
 
 class LowLevel(Process):
-    def __init__(self, ca_conn, qsr_synch, mode):
+    def __init__(self, ca_conn, qsr_synch, mode, verification):
         super().__init__()
         self.ca_conn = ca_conn
         self.qsr_synch = qsr_synch
         self.mode = mode
+        self.verification = verification    # Enable / disable formal verification
         self.world_trace: World_Trace = World_Trace()
         self.qsrlib = QSRlib()
         self.which_qsr = ["argd", "qtcbs", "mos"]
@@ -264,10 +265,10 @@ class LowLevel(Process):
                             statement = ObservationStatement("human", ca, target, destination)  # todo multiple humans
                             if debug:
                                 print("ACTION: {0} {1} {2}".format(ca, target, destination), end=" ")
-                            if not kb.verify_observation(statement):
+                            if self.verification and not kb.verify_observation(statement):
                                 if debug:
                                     print("(ignoring)")
-                                continue
+                                continue    # If the observation is invalid, it is discarded
                             if not debug:
                                 print("Time {0}\nACTION: {1} {2} {3}".format(latest_timestamp, ca, target, destination))
                             # Observations are only reset here because the predicted action might be inconsistent
@@ -296,4 +297,4 @@ class LowLevel(Process):
             pass    # todo
         else:
             self.load()
-            self.test()
+            self.test(debug=False)

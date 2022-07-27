@@ -345,6 +345,22 @@ class Plan:
         """
         return [node for node in self.leaves if node.marker == Marker.UNOBSERVED]
 
+    def get_number_observed(self):
+        """
+        Obtains the list of observed actions.
+
+        @return: number of observed Nodes
+        """
+        return len([node for node in self.leaves if node.marker == Marker.OBSERVED])
+
+    def get_number_missed(self):
+        """
+        Obtains the list of missed actions.
+
+        @return: number of missed Nodes
+        """
+        return len([node for node in self.leaves if node.marker == Marker.MISSED])
+
     def to_goal_statement(self):
         """
         Creates a GoalStatement based on this plan, used for validation in the KnowledgeBase.

@@ -24,7 +24,8 @@ class Contextualizer:
         :return: contextualized action, str
         """
         action = action.upper()
-        context = context.upper()
+        if context is not None:
+            context = context.upper()
         row = self.lut.get(action, action)   # If action is not in the LUT, it will default to action itself
         try:
             ca = row.get(context, action)

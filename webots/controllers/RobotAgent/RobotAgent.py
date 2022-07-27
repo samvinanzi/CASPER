@@ -7,9 +7,13 @@ TIAGo++: https://www.cyberbotics.com/doc/guide/tiagopp?version=master
 
 import math
 import cProfile
+import time
+
 from Agent import Agent
 from controller import Field, InertialUnit, Motion, Node
 import os
+
+from maps.Kitchen2 import Kitchen2
 from qsrlib_io.world_trace import Object_State
 from cognitive_architecture.Episode import *
 from cognitive_architecture.CognitiveArchitecture import CognitiveArchitecture
@@ -17,11 +21,13 @@ from util.PathProvider import path_provider
 from cognitive_architecture.QSRFactory import QSRFactory
 from multiprocessing import Event
 from datatypes.Synchronization import QSRSynch, SynchVariable
-from datatypes.Prediction import Prediction
+from controller import GPS, Compass
 
 agents = ["HumanAgent"]                     # Humans and other robots will initially be unknown
 # Some environmental elements and the robot itself are not considered
 included = ["human", "sink", "glass", "hobs", "biscuits", "meal", "plate", "bottle"]
+
+current_map = Kitchen2()
 
 
 class RobotAgent(Agent):
@@ -35,10 +41,9 @@ class RobotAgent(Agent):
         qsr_synch = QSRSynch()
         self.qsr_factory = QSRFactory(qsr_synch)
         # Set up the cognitive architecture process and its communication channels
-        #self.ca_conn, ca_side_conn = Pipe()
         self.ca_conn = SynchVariable()
         self.start_event = Event()
-        self.cognition = CognitiveArchitecture(self.ca_conn, qsr_synch, self.start_event, mode="TEST")
+        self.cognition = CognitiveArchitecture(self.ca_conn, qsr_synch, self.start_event, "TEST", verification=True)
 
         # Devices
         self.motors = {'head_1': self.supervisor.getDevice("head_1_joint"),
@@ -61,13 +66,16 @@ class RobotAgent(Agent):
                        'wheel_left': self.supervisor.getDevice('wheel_left_joint'),
                        'wheel_right': self.supervisor.getDevice('wheel_right_joint')
                        }
+        self.max_speed = 10.0
         self.inertial = InertialUnit("inertial unit")
+        self.compass = Compass("compax")
 
         # Enables and disables devices
         self.inertial.enable(self.timestep)
         self.camera.enable(self.timestep)
         self.camera.recognitionEnable(self.timestep)
         self.rangefinder.disable()
+        self.compass.enable(self.timestep)
 
         self.update_world_trace()
         print(str(self.__class__.__name__) + " has activated.")
@@ -167,24 +175,8 @@ class RobotAgent(Agent):
                         print("Added {0} to world trace in position [{1}, {2}] at timestamp {3}.".format(
                             new_os.name, new_os.x, new_os.y, new_os.timestamp))
             # Sends the new observations to the cognitive architecture
-            #self.cognition.lowlevel.qsr_queue.add_observation(new_objects)
-            #obs_library.add_observation(new_objects)
-            #self.send_observations(new_objects)
             self.qsr_factory.add_observation(new_objects)
             self.last_timestep = current_timestep
-
-    '''
-    def send_observations(self, observations):
-        """
-        Sends a set of observations to the QSRFactory process.
-
-        @param observations: list of Object_State
-        @return: None
-        """
-        with self.obs_lock:
-            self.obs_queue.put(observations)
-            self.obs_event.set()
-    '''
 
     def calculate_human_orientation_vector(self, human_name, human_position):
         """
@@ -237,11 +229,14 @@ class RobotAgent(Agent):
         assert 0.0 < speed <= 1.0, "Speed must be in (0, 1]."
         assert 0 < degrees <= 360
         max_speed = 10.1523
+        # If the angle is too narrow, skip these computations
+        if 0 <= degrees <= 2:
+            return
         if direction == "LEFT":
             left_velocity = -speed * max_speed
-            right_velocity = 0.0
+            right_velocity = speed * max_speed
         else:
-            left_velocity = 0.0
+            left_velocity = speed * max_speed
             right_velocity = -speed * max_speed
         # Motor initialization
         self.motors['wheel_left'].setPosition(float('inf'))
@@ -359,6 +354,132 @@ class RobotAgent(Agent):
         else:
             print("[ERROR] Invalid motion name: {0}".format(motion_name))
 
+    def get_robot_heading(self):
+        """
+        Using the internal compass, calculates the angle between the robot's facing and the world North.
+
+        @return: Angle between the robot and the world's north, in degrees.
+        """
+        north = self.compass.getValues()
+        rad = math.atan2(north[0], north[2])
+        heading = math.degrees(rad - 1.57)
+        if heading < 0.0:
+            heading += 360.0
+        return heading
+
+    def motor_reset(self):
+        """
+        Resets the wheels velocity and position.
+
+        @return: None
+        """
+        start = time.time()
+        while self.step() and (time.time() - start) < 1:
+            self.motors['wheel_left'].setPosition(float('inf'))
+            self.motors['wheel_right'].setPosition(float('inf'))
+            self.motors['wheel_left'].setVelocity(0.0)
+            self.motors['wheel_right'].setVelocity(0.0)
+
+    def walk(self, target, speed=1, debug=False):
+        """
+        Walks to a specific coordinate, without any animation.
+
+        :param target: coordinate in the format (x, z)
+        :param speed: walking speed in [m/s]
+        :param debug: activate/deactivate debug output
+        :return: None
+        """
+        start_position = self.get_robot_position()
+        if speed is None:
+            speed = self.speed
+        end_position = target
+        # ROTATION
+        self.motor_reset()
+        # Calculates the robot's heading
+        heading = self.get_robot_heading()
+        # Calculates the angle between the robot's position and the target
+        dx = end_position[0] - start_position[0]
+        dy = end_position[1] - start_position[1]
+        destination_angle = math.degrees(math.atan2(dy, dx))
+        # Calculates the angle between the robot's current heading and the destination
+        angle = destination_angle - heading
+        if angle > 180.0:
+            angle -= 360.0 - angle
+        elif angle < -180.0:
+            angle = 360.0 + angle
+        # Performs the rotation
+        if angle > 0:
+            self.rotate(angle, "RIGHT", speed=0.1)
+            print("Rotating {0}° to the RIGHT".format(angle))
+        else:
+            self.rotate(-angle, "LEFT", speed=0.1)
+            print("Rotating {0}° to the LEFT".format(angle))
+        # MOVEMENT
+        self.motor_reset()
+        current_position = self.get_robot_position()
+        total_distance = math.dist(current_position, end_position)
+        while self.step():
+            remaining_distance = math.dist(self.get_robot_position(), end_position)
+            if remaining_distance > 0.5:
+                # Speed decreases linearly with proximity
+                velocity = self.max_speed * (remaining_distance / total_distance)
+                self.motors['wheel_left'].setVelocity(velocity)
+                self.motors['wheel_right'].setVelocity(velocity)
+            else:
+                break
+        self.motor_reset()
+
+    def approach_target(self, target_name, speed=None, debug=False):
+        """
+        Supervisor-version of search-and-approach: uses global knowledge of the world to identify the target coordinates
+        without needing to visually identify the destination.
+
+        :param target_name: str, name of the desired object
+        :return: True if successful, False otherwise
+        """
+        assert isinstance(target_name, str), "Must specify a string name to search for"
+        target = self.all_nodes.get(target_name)
+        if target is not None:
+            # If identified, gets its world position
+            target_position = self.convert_to_2d_coords(target.getPosition())
+            # Trace a path to the destination
+            print("Path planning, please wait...")
+            path = self.path_planning(current_map, target_position, show=False)
+            print("Path found!")
+            if path is not None:
+                print("Walking towards {0}".format(target_name))
+                for waypoint in path:
+                    self.walk(waypoint, speed=speed, debug=False)
+                self.turn_towards(target_position)
+                return True
+            else:
+                print("Couldn't path plan to {0}!".format(target_name))
+        else:
+            print("Couldn't find target: {0}".format(target_name))
+        return False
+
+    def approach_coordinates(self, coordinates, speed=None, debug=False):
+        """
+        Same as approach_target, but moves to certain coordinates instead of referencing a node in the environment.
+
+        :param coordinates: (X,Z) tuple
+        :return: True if successful, False otherwise
+        """
+        assert isinstance(coordinates, tuple), "Must specify a tuple (X,Z) to walk to"
+        # Trace a path to the destination
+        print("Path planning, please wait...")
+        path = self.path_planning(current_map, coordinates, show=False)
+        print("Path found!")
+        if path is not None:
+            print("Walking towards {0}".format(coordinates))
+            for waypoint in path:
+                self.walk(waypoint, speed=speed, debug=False)
+            self.turn_towards(coordinates)
+            return True
+        else:
+            print("Couldn't path plan to {0}!".format(coordinates))
+        return False
+
     def initialize(self):
         # Neutral position
         self.motion("neutral")
@@ -370,31 +491,51 @@ class RobotAgent(Agent):
         self.cognition.lowlevel.start()
         self.cognition.highlevel.start()
 
+    def main(self):
+        self.initialize()
+        while self.step():
+            # Fist of all, check if a goal was inferred
+            if self.ca_conn.poll():
+                plan = self.ca_conn.get()
+                print("I am now ready to act. This is what I will do:")
+                for action in plan:
+                    print("{0}{1}".format(action.name, action.parameters))
+            elif self.is_camera_active():
+                if self.search_for("pedestrian"):
+                    self.track_target("pedestrian")
+                else:
+                    print("I didn't find the human!")
+
+    def get_robot_orientation(self):
+        """
+        Using Supervisor functions, obtains the rotation matrix of the robot.
+
+        :return: 3x3 rotation matrix
+        """
+        orientation = np.array(self.supervisor.getSelf().getOrientation())
+        orientation = orientation.reshape(3, 3)
+        orientation[:, [0, 1]] = orientation[:, [1, 0]]
+        return orientation
+
+
+
 
 # MAIN LOOP
 
 def main():
+    #map = Kitchen2()
     robot = RobotAgent()
-    robot.initialize()
-    while robot.step():
-        # Fist of all, check if a goal was inferred
-        if robot.ca_conn.poll():
-            plan = robot.ca_conn.get()
-            print("I am now ready to act. This is what I will do:")
-            for action in plan:
-                print("{0}{1}".format(action.name, action.parameters))
-        elif robot.is_camera_active():
-            if robot.search_for("pedestrian"):
-                robot.track_target("pedestrian")
-                #if robot.supervisor.getTime() >= 40:
-                    #qsr_response = robot.compute_qsr_test()
-                    #robot.cognition.lowlevel.compute_qsr(show=True)
-                    #pickle.dump(qsr_response, open(os.path.join(BASEDIR, "data\pickle\qsr_response{0}.p".format(i)), "wb"))
-                    #pickle.dump(robot.world_trace, open(os.path.join(BASEDIR, "data\pickle\world_trace{0}.p".format(i)), "wb"))
-                    #print("Saved")
-                #    break
-            else:
-                print("I didn't find the human!")
+    #robot.initialize()
+    robot.main()
+    #robot.walk_to(target=(2.25851, 1.59772), speed=1)
+    #robot.motion("neutral")
+    #robot.walk_to((1.0, 1.0), speed=1, debug=True)
+    #robot.walk_to((3.37, 2.0), speed=1, debug=True)
+    #robot.approach_target('plate')
+    #robot.rotate(90.0, "RIGHT", speed=1, observe=False)
+    #robot.rotate(90.0, "LEFT", speed=1, observe=False)
+    #robot.rotate(90.0, "RIGHT", speed=1, observe=False)
+    #print("Hello!")
 
 
 # Run this code to benchmark execution time

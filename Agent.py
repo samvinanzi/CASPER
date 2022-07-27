@@ -3,10 +3,11 @@ Generic Agent controller.
 Groups common methods between Humans and Robots.
 """
 
-from controller import Robot, Supervisor, Camera, RangeFinder, CameraRecognitionObject, GPS, TouchSensor, \
-    DistanceSensor, Field
+from controller import Supervisor, Camera, RangeFinder, CameraRecognitionObject, Field, Node
 import numpy as np
 import cv2
+import math
+from path_planning.robot_astar import RoboAStar
 
 
 class Agent:
@@ -16,11 +17,12 @@ class Agent:
         self.currentlyPlaying = None                                # Currently playing motion
         self.all_nodes = self.obtain_all_nodes()        # Contains all the nodes in the scene, for Supervisory purposes
         self.debug = debug
+        self.object_in_hand: Node = None
+        self.speed = .5
 
         # Initialize common devices
         self.camera = Camera("camera")
         self.rangefinder = RangeFinder("range-finder")
-        #self.gps = GPS("gps")
         #self.bumper = TouchSensor("touch sensor")
         #self.distance_sensor = DistanceSensor("distance sensor")
 
@@ -228,3 +230,74 @@ class Agent:
         :return: step
         """
         return self.supervisor.step(self.timestep) != -1
+
+    def get_robot_position(self):
+        """
+        Using Supervisor functions, obtains the 2D (x,z) position of the robot.
+
+        :return: (x,z) position of the robot
+        """
+        return self.convert_to_2d_coords(self.supervisor.getSelf().getPosition())
+
+    def get_robot_orientation(self):
+        """
+        Using Supervisor functions, obtains the rotation matrix of the robot.
+
+        :return: 3x3 rotation matrix
+        """
+        orientation = np.array(self.supervisor.getSelf().getOrientation())
+        orientation = orientation.reshape(3, 3)
+        return orientation
+
+    def get_in_hand_name(self):
+        """
+        Retrieves the name of the handheld object.
+
+        :return: str name.
+        """
+        if self.object_in_hand is not None:
+            return self.object_in_hand.getField("name").getSFString()
+        else:
+            return None
+
+    def turn_towards(self, target):
+        """
+        Rotates the robot, in place, towards the target.
+
+        :param target: coordinate in the format (x, z)
+        :return: None
+        """
+        start = self.get_robot_position()
+        end = target
+        root_node_ref = self.supervisor.getSelf()
+        root_rotation_field = root_node_ref.getField("rotation")
+        # Rotate
+        dx = end[0] - start[0]
+        dy = end[1] - start[1]
+        angle = math.atan2(dx, dy)
+        while self.step():
+            root_rotation_field.setSFRotation([0, 1, 0, angle])
+            break
+
+    def path_planning(self, map, goal, show=False):
+        """
+        Finds a path to reach a goal.
+
+        :param goal: (x,z) coordinates.
+        :param show: If True, visualizes the calculated path.
+        :return: Path as a list of coordinates, or None if not found.
+        """
+        planner = RoboAStar(self.supervisor, map, delta=0.25, min_distance=0.2, goal_radius=0.6)
+        start = self.get_robot_position()
+        if self.debug:
+            print("[PATH-PLANNING] From {0} to {1}. Searching...".format(start, goal))
+        path = list(planner.astar(start, goal, reversePath=False))
+        if self.debug:
+            print("[PATH-PLANNING] Path: {0}".format([waypoint for waypoint in path]))
+        if path is None:
+            print("[PATH-PLANNING] Unable to compute a path from {0} to {1}.".format(start, goal))
+        elif show:
+            for waypoint in path:
+                map.add_point_to_plot(waypoint)
+            map.visualize()
+        return path

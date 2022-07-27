@@ -71,24 +71,6 @@ print(feature)
 context = list(focus.get_top_n_items(2))[1]
 '''
 
-
-def plot_focus():
-    plt.gcf().set_dpi(300)
-    headers = ["time", "sink", "glass", "hobs", "biscuits", "meal", "plate", "bottle"]
-    file = path_provider.get_csv("focus_belief.csv")
-    df = pd.read_csv(file, names=headers)
-    for item in headers[1:]:
-        print("Plotting {0}".format(item))
-        df[["time", item]].set_index('time').plot()
-        # Plot styling
-        plt.legend(loc="upper right")
-        plt.ylim(0, 1.0)
-        plt.axhline(y=0.5, color='r', linestyle='dashed')
-        # Data plotting
-        plt.savefig(path_provider.get_image("{0}.png".format(item)))
-
-
-
 """
 FOCUS SIMULATOR
 
@@ -162,8 +144,47 @@ goal.render()
 
 #plan = make_plan(goal)
 
-util.plots.test_fsm(save=True, name='fsm_pnp.png')
+#util.plots.test_fsm('pnp', save=True)
+#util.plots.test_fsm('use', save=True)
+#util.plots.test_fsm('rel', save=True)
 
+
+"""
+from cognitive_architecture.PlanLibrary import PlanLibrary
+
+pl = PlanLibrary()
+
+
+action = "WASH"
+params = {
+    'target': 'meal',
+    'destination': 'hobs'
+}
+util.plots.test_pl(pl, action, params)
+
+action = "COOK"
+params = {
+    'target': 'meal',
+    'destination': 'plate'
+}
+util.plots.test_pl(pl, action, params)
+"""
+
+from util.Logger import Logger
+
+logger = Logger()
+data = {
+    'trial': 2,
+    'observed_actions': 3,
+    'time': 50,
+    'prediction': 'breakfast',
+    'collab_len': 2
+}
+logger.log(data)
+logger.log(data)
+logger.log(data)
+logger.log(data)
+logger.log(data)    #4
 
 
 print("\nDone")

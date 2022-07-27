@@ -9,7 +9,7 @@ from datatypes.Synchronization import SynchVariable
 
 
 class CognitiveArchitecture(Process):
-    def __init__(self, robot_conn, qsr_synch, start_event, mode):
+    def __init__(self, robot_conn, qsr_synch, start_event, mode, verification=True):
         super().__init__()
         assert mode.upper() in ['TRAIN', 'TEST'], "mode accepted values: 'train', 'test'."
         self.robot_conn = robot_conn
@@ -17,10 +17,10 @@ class CognitiveArchitecture(Process):
         self.mode = mode
         # Creates synchronized objects for LowLevel and HighLevel and initializes them
         self.obs_from_ll_conn = SynchVariable()
-        self.lowlevel = LowLevel(self.obs_from_ll_conn, qsr_synch, mode)
+        self.lowlevel = LowLevel(self.obs_from_ll_conn, qsr_synch, mode, verification)
         self.obs_to_hl_conn = SynchVariable()
         self.goal_from_hl_conn = SynchVariable()
-        self.highlevel = HighLevel(self.obs_to_hl_conn, self.goal_from_hl_conn)
+        self.highlevel = HighLevel(self.obs_to_hl_conn, self.goal_from_hl_conn, verification)
 
     def run(self) -> None:
         print("{0} process is running in {1} mode.".format(self.__class__.__name__, self.mode))

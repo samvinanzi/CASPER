@@ -7,7 +7,6 @@ from Agent import Agent
 from controller import Node, Field
 import math
 import numpy as np
-from path_planning.robot_astar import RoboAStar
 from maps.Kitchen2 import Kitchen2
 from copy import copy
 import cProfile
@@ -103,7 +102,7 @@ class HumanAgent(Agent):
             root_rotation_field.setSFRotation([0, 1, 0, angle])
             break
 
-    def walk_simplified(self, target, speed=None, enable_bumper=False, debug=False):
+    def walk(self, target, speed=None, enable_bumper=False, debug=False):
         """
         Walks to a specific coordinate, without any animation.
 
@@ -163,109 +162,6 @@ class HumanAgent(Agent):
                     print("I have stopped in position: {0}".format(waypoint))
                 return
 
-    def walk(self, trajectory, speed=None, debug=False):
-        # todo not currently working
-        """
-        Executes a walking animation to a specified target coordinate.
-
-        :param trajectory: trajectory in the format [(x1, y1), (x2, y2), ...]
-        :param speed: walking speed in [m/s]
-        :return:
-        """
-        if speed is None:
-            speed = self.speed
-        # Calculates the waypoints (including the starting position)
-        initial_position = self.get_robot_position()
-        number_of_waypoints = len(trajectory) + 1  # Because I add the initial waypoint by hand
-        waypoints = [[initial_position[0], initial_position[1]]]
-        for i in range(0, number_of_waypoints - 1):
-            waypoints.append([trajectory[i][0], trajectory[i][1]])
-        final_waypoint = waypoints[-1]
-
-        print("I am about to walk from {0} to {1}".format(initial_position, final_waypoint))
-
-        root_node_ref = self.supervisor.getSelf()   # root_node_ref is the Robot node where the Supervisor is running
-        root_translation_field = root_node_ref.getField("translation")
-        root_rotation_field = root_node_ref.getField("rotation")
-        #for i in range(0, self.BODY_PARTS_NUMBER):
-        #    joint = root_node_ref.getField(self.joint_names[i])
-        #    self.joints_position_field.append(joint)
-
-        # compute waypoints distance
-        waypoints_distance = []
-        for i in range(0, number_of_waypoints):
-            x = waypoints[i][0] - waypoints[(i + 1) % number_of_waypoints][0]
-            z = waypoints[i][1] - waypoints[(i + 1) % number_of_waypoints][1]
-            if i == 0:
-                waypoints_distance.append(math.sqrt(x * x + z * z))
-            else:
-                waypoints_distance.append(waypoints_distance[i - 1] + math.sqrt(x * x + z * z))
-        while self.step():
-            time = self.supervisor.getTime()
-
-            current_sequence = int(((time * speed) / self.CYCLE_TO_DISTANCE_RATIO) % self.WALK_SEQUENCES_NUMBER)
-            # compute the ratio 'distance already covered between way-point(X) and way-point(X+1)'
-            # / 'total distance between way-point(X) and way-point(X+1)'
-            ratio = (time * speed) / self.CYCLE_TO_DISTANCE_RATIO - \
-                    int(((time * speed) / self.CYCLE_TO_DISTANCE_RATIO))
-
-            for i in range(0, self.BODY_PARTS_NUMBER):
-                current_angle = self.angles[i][current_sequence] * (1 - ratio) + \
-                                self.angles[i][(current_sequence + 1) % self.WALK_SEQUENCES_NUMBER] * ratio
-                # Positions the joints
-                self.joints_position_field[i].setSFFloat(current_angle)
-
-            # adjust height
-            current_height_offset = self.height_offsets[current_sequence] * (1 - ratio) + \
-                                    self.height_offsets[(current_sequence + 1) % self.WALK_SEQUENCES_NUMBER] * ratio
-
-            # move everything forward
-            distance = time * speed
-            relative_distance = distance - int(distance / waypoints_distance[number_of_waypoints - 1]) * \
-                                waypoints_distance[number_of_waypoints - 1]
-
-            for i in range(0, number_of_waypoints):
-                if waypoints_distance[i] > relative_distance:
-                    break
-
-            distance_ratio = 0
-            if i == 0:
-                distance_ratio = relative_distance / waypoints_distance[0]
-            else:
-                distance_ratio = (relative_distance - waypoints_distance[i - 1]) / \
-                                 (waypoints_distance[i] - waypoints_distance[i - 1])
-            x = distance_ratio * waypoints[(i + 1) % number_of_waypoints][0] + (1 - distance_ratio) * waypoints[i][0]
-            z = distance_ratio * waypoints[(i + 1) % number_of_waypoints][1] + (1 - distance_ratio) * waypoints[i][1]
-
-            root_translation = [x, self.ROOT_HEIGHT + current_height_offset, z]
-            angle = math.atan2(waypoints[(i + 1) % number_of_waypoints][0] - waypoints[i][0],
-                               waypoints[(i + 1) % number_of_waypoints][1] - waypoints[i][1])
-            rotation = [0, 1, 0, angle]
-            root_translation_field.setSFVec3f(root_translation)
-            root_rotation_field.setSFRotation(rotation)
-            self.move_object_in_hand()
-
-            # Check if destination is reached
-            agent_position = human.get_gps_position()
-            dist = math.hypot(agent_position[0] - final_waypoint[0], agent_position[1] - final_waypoint[1])
-            if debug:
-                print("Current position: " + str(agent_position))
-                print("Target position: " + str(final_waypoint))
-                print("Distance: " + str(dist))
-                print("---")
-            # Stop when at 40 cm from target
-            if dist <= 0.4:
-                # Let's reset the position to a neutral pose
-                # Ensure feet are touching the ground
-                root_translation_field.setSFVec3f([x, self.ROOT_HEIGHT, z])
-                # Adopt a neutral position
-                for i in range(0, self.BODY_PARTS_NUMBER):
-                    self.joints_position_field[i].setSFFloat(0.0)
-                # Compute an additional step to ensure that the position is reached
-                #self.step()
-                print("I have stopped at: " + str(self.get_robot_position()))
-                return
-
     def approach_target(self, target_name, speed=None, debug=False):
         """
         Supervisor-version of search-and-approach: uses global knowledge of the world to identify the target coordinates
@@ -281,7 +177,7 @@ class HumanAgent(Agent):
             target_position = self.convert_to_2d_coords(target.getPosition())
             # Trace a path to the destination
             print("Path planning, please wait...")
-            path = self.path_planning(target_position, show=False)
+            path = self.path_planning(current_map, target_position, show=False)
             print("Path found!")
             if path is not None:
                 print("Walking towards {0}".format(target_name))
@@ -294,7 +190,7 @@ class HumanAgent(Agent):
                     self.update_training_label("WALK")
                     self.update_training_target(target_name)
                 for waypoint in path:
-                    self.walk_simplified(waypoint, speed=speed, debug=False)        #todo re-enable if required
+                    self.walk(waypoint, speed=speed, debug=False)        #todo re-enable if required
                 self.turn_towards(target_position)
                 return True
             else:
@@ -313,7 +209,7 @@ class HumanAgent(Agent):
         assert isinstance(coordinates, tuple), "Must specify a tuple (X,Z) to walk to"
         # Trace a path to the destination
         print("Path planning, please wait...")
-        path = self.path_planning(coordinates, show=False)
+        path = self.path_planning(current_map, coordinates, show=False)
         print("Path found!")
         if path is not None:
             print("Walking towards {0}".format(coordinates))
@@ -326,35 +222,12 @@ class HumanAgent(Agent):
                 self.update_training_label("WALK")
                 #self.update_training_target(coordinates)
             for waypoint in path:
-                self.walk_simplified(waypoint, speed=speed, debug=False)        #todo re-enable if required
+                self.walk(waypoint, speed=speed, debug=False)        #todo re-enable if required
             self.turn_towards(coordinates)
             return True
         else:
             print("Couldn't path plan to {0}!".format(coordinates))
         return False
-
-    def path_planning(self, goal, show=False):
-        """
-        Finds a path to reach a goal.
-
-        :param goal: (x,z) coordinates.
-        :param show: If True, visualizes the calculated path.
-        :return: Path as a list of coordinates, or None if not found.
-        """
-        planner = RoboAStar(self.supervisor, current_map, delta=0.25, min_distance=0.2, goal_radius=0.6)
-        start = self.get_robot_position()
-        if self.debug:
-            print("[PATH-PLANNING] From {0} to {1}. Searching...".format(start, goal))
-        path = list(planner.astar(start, goal, reversePath=False))
-        if self.debug:
-            print("[PATH-PLANNING] Path: {0}".format([waypoint for waypoint in path]))
-        if path is None:
-            print("[PATH-PLANNING] Unable to compute a path from {0} to {1}.".format(start, goal))
-        elif show:
-            for waypoint in path:
-                current_map.add_point_to_plot(waypoint)
-            current_map.visualize()
-        return path
 
     def neutral_position(self):
         """
@@ -752,8 +625,8 @@ def main():
     while human.step():
         human.busy_waiting(1, label="STILL")    # Intro
         #human.breakfast(with_collab=True)
-        #human.lunch(with_collab=True)
-        human.drink(with_collab=True)
+        human.lunch(with_collab=True)
+        #human.drink(with_collab=True)
         human.busy_waiting(-1, label="STILL")   # Outro
         break
 
