@@ -6,6 +6,8 @@ from util.PathProvider import path_provider
 from cognitive_architecture.MarkovFSM import ensemble
 import time
 from cognitive_architecture.PlanLibrary import GoalNotRecognizedException
+import statistics
+import csv
 
 
 def plot_focus():
@@ -119,3 +121,86 @@ def test_pl(pl, action, params):
     print("Action: {0}\nExplanations: {1}\nOutcome: {2}\nTime: {3}\nConfidence: {4}".format(action, n, out, ms,
                                                                                             confidence))
     print("------------------")
+
+
+def plot_results_verification():
+
+    class Results:
+        def __init__(self, data):
+            self.data = data
+            self.mean = statistics.mean(data)
+            self.std = statistics.stdev(data)
+
+    class Experiment:
+        def __init__(self, name, data_v, data_nv):
+            self.name = name
+            self.v = Results(data_v)
+            self.nv = Results(data_nv)
+
+    data = {
+        'Breakfast': {
+            'V': [49.52, 39.86, 38.33, 44.99, 73.33],
+            'NV': [69.5, 68.83, 46.66, 72.57, 82.78],
+        },
+        'Lunch': {
+            'V': [96.19, 68.75, 71.49, 75.96, 99.9],
+            'NV': [120.33, 113.83, 93.3, 106.1, 131.67]
+        },
+        'Drink': {
+            'V': [39.94, 57.1, 71.82, 54.63, 47.19],
+            'NV': [46.4, 64.32, 80.9, 61.97, 57.66]
+        }
+    }
+
+    breakfast = Experiment("Breakfast", data['Breakfast']['V'], data['Breakfast']['NV'])
+    lunch = Experiment("Lunch", data['Lunch']['V'], data['Lunch']['NV'])
+    drink = Experiment("Drink", data['Drink']['V'], data['Drink']['NV'])
+
+    mean_v = [lunch.v.mean, drink.v.mean, breakfast.v.mean]
+    mean_nv = [lunch.nv.mean, drink.nv.mean, breakfast.nv.mean]
+    std_v = [lunch.v.std, drink.v.std, breakfast.v.std]
+    std_nv = [lunch.nv.std, drink.nv.std, breakfast.nv.std]
+
+    plt.rcdefaults()
+    fig, ax = plt.subplots()
+
+    x_axis = np.arange(len(data))
+
+    # Multi bar Chart
+
+    ax.barh(x_axis + 0.1, mean_v, 0.2, color='gold', label='Verified', xerr=std_v,
+            error_kw=dict(lw=1, capsize=4, capthick=1))
+    ax.barh(x_axis - 0.1, mean_nv, 0.2, color='indianred', label='Non-Verified', xerr=std_nv,
+            error_kw=dict(lw=1, capsize=4, capthick=1))
+
+    plt.yticks(x_axis, ['Lunch', 'Drink', 'Breakfast'])
+    plt.legend(loc="upper right")
+    ax.set_xlabel('Time (s)')
+    ax.set_title('Prediction time comparison\n(lower is better)')
+
+    # Display
+    plt.tight_layout()
+    plt.savefig(path_provider.get_image('comparison.jpg'))
+
+
+def elaborate_trial_data(filename):
+    logfile = path_provider.get_csv('experiment1_logs/' + filename)
+    observed = []
+    missed = []
+    waiting = []
+    planned = []
+    time = []
+    with open(logfile, 'r', encoding='UTF8') as f:
+        csv_reader = csv.DictReader(f)
+        for row in csv_reader:
+            observed.append(float(row['observed']))
+            missed.append(float(row['missed']))
+            waiting.append(float(row['waiting']))
+            planned.append(float(row['planned']))
+            time.append(float(row['time']))
+        observed = statistics.mean(observed)
+        missed = statistics.mean(missed)
+        waiting = statistics.mean(waiting)
+        planned = statistics.mean(planned)
+        time = round(statistics.mean(time), 2)
+    return observed, missed, waiting, planned, time
