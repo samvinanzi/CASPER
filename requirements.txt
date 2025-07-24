@@ -1,0 +1,13 @@
+matplotlib
+numpy
+pandas
+scipy
+scikit-learn
+opencv-python
+igraph
+catkin_pkg
+pyyaml
+python-docx
+shapely
+owlready2
+anytree
