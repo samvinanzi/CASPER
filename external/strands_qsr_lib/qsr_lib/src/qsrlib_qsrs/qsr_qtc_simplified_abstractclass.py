@@ -3,7 +3,7 @@
 from abc import abstractmethod, ABCMeta
 from qsrlib_qsrs.qsr_dyadic_abstractclass import QSR_Dyadic_Abstractclass
 from qsrlib_io.world_qsr_trace import *
-from exceptions import Exception, AttributeError
+#from exceptions import Exception, AttributeError
 import numpy as np
 
 # todo /use/bin/env python not needed here.
@@ -73,26 +73,26 @@ class QSR_QTC_Simplified_Abstractclass(QSR_Dyadic_Abstractclass):
             if self.qtc_type == "":
                 raise AttributeError()
             elif self.qtc_type == 'b':
-                for i in xrange(1, 4):
-                    for j in xrange(1, 4):
+                for i in range(1, 4):
+                    for j in range(1, 4):
                         ret_int.append([i-2, j-2])
                         ret_str.append(str(i-2) + "," + str(j-2))
             elif self.qtc_type is 'c':
-                for i in xrange(1, 4):
-                    for j in xrange(1, 4):
-                        for k in xrange(1, 4):
-                            for l in xrange(1, 4):
+                for i in range(1, 4):
+                    for j in range(1, 4):
+                        for k in range(1, 4):
+                            for l in range(1, 4):
                                 ret_int.append([i-2, j-2, k-2, l-2])
                                 ret_str.append(str(i-2) + "," + str(j-2) + "," + str(k-2) + "," + str(l-2))
             elif self.qtc_type is 'bc':
-                for i in xrange(1, 4):
-                    for j in xrange(1, 4):
-                        ret_int.append([i-2, j-2, np.NaN, np.NaN])
+                for i in range(1, 4):
+                    for j in range(1, 4):
+                        ret_int.append([i-2, j-2, np.nan, np.nan])
                         ret_str.append(str(i-2) + "," + str(j-2))
-                for i in xrange(1, 4):
-                    for j in xrange(1, 4):
-                        for k in xrange(1, 4):
-                            for l in xrange(1, 4):
+                for i in range(1, 4):
+                    for j in range(1, 4):
+                        for k in range(1, 4):
+                            for l in range(1, 4):
                                 ret_int.append([i-2, j-2, k-2, l-2])
                                 ret_str.append(str(i-2) + "," + str(j-2) + "," + str(k-2) + "," + str(l-2))
         except AttributeError:
@@ -116,7 +116,7 @@ class QSR_QTC_Simplified_Abstractclass(QSR_Dyadic_Abstractclass):
 
         legal_qtc = np.array([qtc[0,:]])
 
-        for i in xrange(1, qtc.shape[0]):
+        for i in range(1, qtc.shape[0]):
             insert = np.array(qtc[i,:].copy())
             ###################################################################
             # self transition = 0, transition form - to + and vice versa = 2
@@ -131,8 +131,8 @@ class QSR_QTC_Simplified_Abstractclass(QSR_Dyadic_Abstractclass):
             # 2,3: 0-00 <> 00-0 | 0+00 <> 00+0 | 0-00 <> 00+0 | 0+00 <> 00-0
             # 2,4: 0-00 <> 000- | 0+00 <> 000+ | 0-00 <> 000+ | 0+00 <> 000-
             # 3,4: 00-0 <> 000- | 00+0 <> 000+ | 00-0 <> 000+ | 00+0 <> 000-
-            for j1 in xrange(0, len(qtc[i,:])-1):
-                for j2 in xrange(j1+1, len(insert)):
+            for j1 in range(0, len(qtc[i,:])-1):
+                for j2 in range(j1+1, len(insert)):
                     if np.sum(np.abs(qtc[i-1,[j1,j2]])) == 1 \
                             and np.sum(np.abs(insert[[j1,j2]])) == 1:
                         if np.nanmax(np.abs(qtc[i-1,[j1,j2]] - insert[[j1,j2]])) > 0 \
