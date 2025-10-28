@@ -1,5 +1,5 @@
 # ---- Stage 1: Download Webots ----
-FROM ubuntu:24.04 AS downloader
+FROM nvidia/cuda:13.0.1-cudnn-devel-ubuntu24.04 AS downloader
 
 ARG WEBOTS_VERSION=R2025a
 ARG WEBOTS_PACKAGE_PREFIX=
@@ -16,7 +16,7 @@ RUN wget https://github.com/cyberbotics/webots/releases/download/${WEBOTS_VERSIO
     rm webots-${WEBOTS_VERSION}-x86-64${WEBOTS_PACKAGE_PREFIX}.tar.bz2
 
 # ---- Stage 2: Final Image with Webots + Python ----
-FROM ubuntu:24.04
+FROM nvidia/cuda:13.0.1-cudnn-devel-ubuntu24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -31,9 +31,7 @@ RUN apt update -y && apt upgrade -y && \
     git \
     xvfb \
     libx11-6 \
-    libgl1 \
-    libglx-mesa0 \
-    libgl1-mesa-dri \
+    x11-apps mesa-utils libgl1 libglu1-mesa \
     libglib2.0-0 \
     libsm6 \
     libxrender1 \
@@ -61,8 +59,8 @@ ENV LANG='en_US.UTF-8' LANGUAGE='en_US:en' LC_ALL='en_US.UTF-8'
 # Create virtual environment 
 RUN python3 -m venv /venv 
 # Set PATH to use the virtual environment by default 
-ENV PATH="/venv/bin:$PATH"
-ENV VIRTUAL_ENV="/venv"
+ENV VIRTUAL_ENV=/venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 # Copy requirements.txt and install Python packages
 COPY requirements.txt .
@@ -86,18 +84,28 @@ COPY --from=downloader /webots/webots* /usr/local/webots
 ENV QTWEBENGINE_DISABLE_SANDBOX=1
 ENV WEBOTS_HOME=/usr/local/webots
 ENV PATH="${WEBOTS_HOME}:$PATH"
-#ENV NVIDIA_DRIVER_CAPABILITIES=graphics,compute,utility
+ENV NVIDIA_DRIVER_CAPABILITIES=graphics,compute,utility
 ENV USER=root
 
+# Webots GUI will use the host display
+ENV DISPLAY=:0
+#ENV QT_X11_NO_MITSHM=1
+
+# Set NVIDIA offload environment variables
+#ENV __NV_PRIME_RENDER_OFFLOAD=1
+#ENV __GLX_VENDOR_LIBRARY_NAME=nvidia
 
 WORKDIR /app
+
+# Copy everything from the current host directory into /app inside the container
+#COPY . .
 
 # === Optional Headless Mode ===
 # To use Webots in headless mode (no GUI), comment the line above and uncomment below:
 # CMD ["xvfb-run", "--auto-servernum", "--", "webots", "--batch", "--no-rendering"]
 
 # Default: open shell with GUI support
-CMD ["/bin/bash"]
+#CMD ["/bin/bash"]
 #CMD ["webots"]
 # ====================================================================================
 # === Build ===
@@ -108,9 +116,20 @@ CMD ["/bin/bash"]
 #xhost +local:root 
 
 # Start the container:
-#docker run -it -e DISPLAY -e LIBGL_ALWAYS_SOFTWARE=1 -v /tmp/.X11-unix:/tmp/.X11-unix:rw webots-gui
+#docker run --gpus=all -it -e DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix:rw  webots-gui
 
 
+#xhost +local:root
+#docker run -it \
+#  --gpus all \
+#  -e DISPLAY=$DISPLAY \
+#  -e QT_X11_NO_MITSHM=1 \
+#  -e __NV_PRIME_RENDER_OFFLOAD=1 \
+#  -e __GLX_VENDOR_LIBRARY_NAME=nvidia \
+#  -v /tmp/.X11-unix:/tmp/.X11-unix \
+#  -v /usr/lib/x86_64-linux-gnu/nvidia:/usr/lib/x86_64-linux-gnu/nvidia:ro \
+#  --device /dev/dri \
+#  webots-gpu
 
-
-
+# Start bash by default
+ENTRYPOINT ["/bin/bash"]
