@@ -52,6 +52,7 @@ class GoalStatement:
 
 class KnowledgeBase:
     # Saves the world in an SQLite3 file on disk instead of keeping it in memory
+    #print(path_provider.get_SQLite3())
     default_world.set_backend(filename=path_provider.get_SQLite3(), exclusive=False)
 
     def __init__(self, ontology_name):
