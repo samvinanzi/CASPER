@@ -4,6 +4,12 @@ Derives from Agent.
 
 TIAGo++: https://www.cyberbotics.com/doc/guide/tiagopp?version=master
 """
+import sys
+import os
+
+# Add the project root directory to sys.path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
+
 
 import math
 import cProfile
