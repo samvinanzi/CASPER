@@ -47,8 +47,8 @@ WorldInfo {
 }
 Viewpoint {
   fieldOfView 1.1
-  orientation -0.014997291734913671 -0.9997444614106565 0.016914287432052744 4.8321352431668805
-  position -0.7122515061094695 -1.8487768486304517 11.63481785836389
+  orientation -0.11200431165738285 -0.23186655027500674 0.9662778777524217 5.356028974562592
+  position -1.0951203828434712 -0.2449090940109646 1.8046850007243267
   exposure 0.7999999999999999
   followType "None"
 }
@@ -822,4 +822,14 @@ Tiago++ {
   translation -0.20523 -3.51365 0.095
   rotation 0 0 1 1.65261
   controller "RobotAgent"
+  supervisor TRUE
+  cameraSlot [
+    RangeFinder {
+    }
+    Camera {
+      rotation -1 0 0 1.5708
+      recognition Recognition {
+      }
+    }
+  ]
 }
