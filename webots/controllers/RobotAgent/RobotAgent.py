@@ -112,7 +112,7 @@ class RobotAgent(Agent):
         """
         for object in objects:
             # Uses the id of the recognized object to retrieve its node in the scene tree
-            id = object.get_id()
+            id = object.getId()
             node = self.supervisor.getFromId(id)
             current_position = node.getPosition()
             name_field = node.getField("name")
@@ -151,6 +151,7 @@ class RobotAgent(Agent):
         if current_timestep > self.last_timestep:
             new_objects = []
             for name, position in self.world_knowledge.items():
+                print(name, position)
                 if position is not None:
                     # If we are dealing with a human, let's register their specific states
                     if name == "human":
@@ -173,9 +174,9 @@ class RobotAgent(Agent):
                         # ObjectState insertion
                         new_os = Object_State(name=name, timestamp=current_timestep,
                                               x=position[0], y=position[2], hold=hold, label=training_label,
-                                              target=training_target, ov=ov)
+                                              target=training_target, ov=ov)# TODO LETI
                     else:
-                        new_os = Object_State(name=name, timestamp=current_timestep, x=position[0], y=position[2])
+                        new_os = Object_State(name=name, timestamp=current_timestep, x=position[0], y=position[2])# TODO LETI
                     new_objects.append(new_os)
                     if debug:
                         print("Added {0} to world trace in position [{1}, {2}] at timestamp {3}.".format(
@@ -276,7 +277,7 @@ class RobotAgent(Agent):
         target = self.get_object_from_set(target_name, objects)
         if target is not None:
             # Calculate the distance from the center of the camera
-            position_on_image = target.get_position_on_image()
+            position_on_image = target.getPositionOnImage()
             error = self.camera.getWidth() / 2 - position_on_image[0]
             current_position = self.motors['head_1'].getTargetPosition()    # Head motor position
             max_position = self.motors['head_1'].getMaxPosition()           # Head motor max rotation

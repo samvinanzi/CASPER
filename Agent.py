@@ -33,8 +33,10 @@ class Agent:
         :return: dictionary[name] = node
         """
         root_node = self.supervisor.getRoot()
+        print(root_node)
         if root_node is not None:
             root_node_children: Field = root_node.getField("children")
+            print(root_node_children)
             n = root_node_children.getCount()
             all_nodes = {}
             for i in range(n):
@@ -82,7 +84,7 @@ class Agent:
             objects = self.camera.getRecognitionObjects()
             if debug:
                 print("I have recognized " + str(n_obj) + " object" + ("s" if n_obj != 1 else "") + "!")
-                object_models = [object.get_model().decode('utf-8') for object in objects]
+                object_models = [object.getModel().decode('utf-8') for object in objects]
                 print("Objects detected: {0}".format(object_models))
             return objects
 
@@ -93,7 +95,8 @@ class Agent:
         :param objects: CameraRecognitionObject list
         :return: str list
         """
-        return [object.get_model().decode('utf-8') for object in objects]
+        #return [object.getModel().decode('utf-8') for object in objects]
+        return [object.getModel() for object in objects]
 
     def get_object_from_set(self, target, objects):
         """
@@ -182,7 +185,7 @@ class Agent:
                     if isinstance(object, CameraRecognitionObject):
                         coordinates = tuple(object.get_position_on_image())
                         shifted_coordinates = (coordinates[0], coordinates[1] - 10)
-                        model = object.get_model().decode('utf-8')
+                        model = object.getModel().decode('utf-8')
                         size = object.get_size_on_image()
                         color = (0, 0, 255)
                         # Draw on the image
