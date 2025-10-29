@@ -816,11 +816,13 @@ BunchOfSunFlowers {
 }
 Pedestrian {
   translation -1.88154 -1.43692 1.27
-  controller "HumanAgent"
+  name "human12"
+  controller "<extern>"
 }
 Tiago++ {
   translation -0.20523 -3.51365 0.095
   rotation 0 0 1 1.65261
+  name "myTiago"
   controller "RobotAgent"
   supervisor TRUE
   cameraSlot [
