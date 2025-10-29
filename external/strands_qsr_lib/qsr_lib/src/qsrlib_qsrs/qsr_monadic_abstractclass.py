@@ -104,7 +104,7 @@ class QSR_Monadic_2t_Abstractclass(QSR_Monadic_Abstractclass):
         for t, tp in zip(timestamps[1:], timestamps):
             world_state_now = world_trace.trace[t]
             world_state_previous = world_trace.trace[tp]
-            qsrs_for = self._process_qsrs_for([world_state_previous.objects.keys(), world_state_now.objects.keys()],
+            qsrs_for = self._process_qsrs_for([list(world_state_previous.objects.keys()), list(world_state_now.objects.keys())],
                                               req_params["dynamic_args"])
             for object_name in qsrs_for:
                 try:

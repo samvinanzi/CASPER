@@ -438,7 +438,7 @@ class QSR_QTC_Simplified_Abstractclass(QSR_Dyadic_Abstractclass):
         for t, tp in zip(timestamps[1:], timestamps):
             world_state_now = world_trace.trace[t]
             world_state_previous = world_trace.trace[tp]
-            qsrs_for = self._process_qsrs_for([world_state_previous.objects.keys(), world_state_now.objects.keys()],
+            qsrs_for = self._process_qsrs_for([list(world_state_previous.objects.keys()), list(world_state_now.objects.keys())],
                                               req_params["dynamic_args"])
             for o1_name, o2_name in qsrs_for:
                 between = str(o1_name) + "," + str(o2_name)
