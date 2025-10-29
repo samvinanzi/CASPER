@@ -2,6 +2,7 @@
 FROM nvidia/cuda:13.0.1-cudnn-devel-ubuntu24.04 AS downloader
 
 ARG WEBOTS_VERSION=R2025a
+#ARG WEBOTS_VERSION=R2021a
 ARG WEBOTS_PACKAGE_PREFIX=
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -84,16 +85,20 @@ COPY --from=downloader /webots/webots* /usr/local/webots
 ENV QTWEBENGINE_DISABLE_SANDBOX=1
 ENV WEBOTS_HOME=/usr/local/webots
 ENV PATH="${WEBOTS_HOME}:$PATH"
-ENV NVIDIA_DRIVER_CAPABILITIES=graphics,compute,utility
+
+# Enable OpenGL capabilities
+ENV NVIDIA_DRIVER_CAPABILITIES graphics,compute,utility
+
 ENV USER=root
+
 
 # Webots GUI will use the host display
 ENV DISPLAY=:0
-#ENV QT_X11_NO_MITSHM=1
+ENV QT_X11_NO_MITSHM=1
 
 # Set NVIDIA offload environment variables
-#ENV __NV_PRIME_RENDER_OFFLOAD=1
-#ENV __GLX_VENDOR_LIBRARY_NAME=nvidia
+ENV __NV_PRIME_RENDER_OFFLOAD=1
+ENV __GLX_VENDOR_LIBRARY_NAME=nvidia
 
 WORKDIR /app
 
