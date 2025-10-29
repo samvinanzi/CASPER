@@ -18,6 +18,10 @@ class CognitiveArchitecture(Process):
         # Creates synchronized objects for LowLevel and HighLevel and initializes them
         self.obs_from_ll_conn = SynchVariable()
         self.lowlevel = LowLevel(self.obs_from_ll_conn, qsr_synch, mode, verification)
+        #print("Training Decision Tree...")
+        #self.lowlevel.train_decision_tree()
+        #self.lowlevel.save()
+        #print("Decision Tree trained.")
         self.obs_to_hl_conn = SynchVariable()
         self.goal_from_hl_conn = SynchVariable()
         self.highlevel = HighLevel(self.obs_to_hl_conn, self.goal_from_hl_conn, verification)

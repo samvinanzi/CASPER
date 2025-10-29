@@ -67,6 +67,7 @@ class LowLevel(Process):
         :return: None
         """
         pickle.dump(self.tree, open(path_provider.get_save('tree.p'), "wb"))
+        print("[DEBUG] Saved Low-Level cognitive architecture to {0}".format(path_provider.get_save('tree.p')))
 
     def load(self):
         """

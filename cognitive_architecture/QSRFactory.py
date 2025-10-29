@@ -65,8 +65,8 @@ class QSRFactory:
                                     qsrlib_response_message.qsrs.trace[t].qsrs.values()):
                         foo += str(k) + ":" + str(v.qsr) + "; "
                     print(foo)
-
             qsrlib_request_message = QSRlib_Request_Message(self.which_qsr, self.world_trace, dynamic_args=self.dynamic_args)
+            print(qsrlib_request_message.input_data)
             qsrlib_response_message = self.qsrlib.request_qsrs(req_msg=qsrlib_request_message)
             if show:
                 pretty_print_world_qsr_trace(qsrlib_response_message)
@@ -88,7 +88,7 @@ class QSRFactory:
                 trimming_point = int(critical_size / 2)
                 self.world_trace = self.world_trace.get_at_timestamp_range(start=latest_timestamp-trimming_point)
 
-    def __init__(self, qsr_synch, debug=False):
+    def __init__(self, qsr_synch, debug=True):
         self.debug = debug
         self.qsr_parser = self.QSRParser()
         self.observations = []
@@ -138,7 +138,7 @@ class QSRFactory:
                 continue
             else:
                 self.qsr_parser.trim()
-                qsr = self.qsr_parser.compute_qsr(show=False)
+                qsr = self.qsr_parser.compute_qsr(show=True)
                 # Store the QSR library for the consumer
                 if self.debug:
                     print("[OBSLIB] Updating the QSR Library with timestamp {0}.".format(

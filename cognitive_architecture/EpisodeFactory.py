@@ -10,9 +10,10 @@ import pandas as pd
 import math
 from sklearn.preprocessing import LabelEncoder
 from cognitive_architecture.Episode import Episode, HumanFrame, ObjectFrame
+from util.PathProvider import path_provider
 
-PICKLE_DIR = "data\pickle"
-CSV_DIR = "data\csv"
+PICKLE_DIR = "../data/pickle"
+CSV_DIR = "../data/csv"
 
 
 class EpisodeFactory:
@@ -204,7 +205,9 @@ class EpisodeFactory:
         return np.array(dataset)
 
     def load_training_dataset(self, filename):
-        file = os.path.join(CSV_DIR, filename)
+        #file = os.path.join(CSV_DIR, filename)
+        file = path_provider.get_csv(filename)
+        print(file)
         if not os.path.exists(file) or not os.path.isfile(file):
             print("Error trying to access data in {0}".format(file))
         else:
