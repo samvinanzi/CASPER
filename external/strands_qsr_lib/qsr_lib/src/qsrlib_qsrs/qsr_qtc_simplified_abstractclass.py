@@ -77,14 +77,14 @@ class QSR_QTC_Simplified_Abstractclass(QSR_Dyadic_Abstractclass):
                     for j in range(1, 4):
                         ret_int.append([i-2, j-2])
                         ret_str.append(str(i-2) + "," + str(j-2))
-            elif self.qtc_type is 'c':
+            elif self.qtc_type == 'c':
                 for i in range(1, 4):
                     for j in range(1, 4):
                         for k in range(1, 4):
                             for l in range(1, 4):
                                 ret_int.append([i-2, j-2, k-2, l-2])
                                 ret_str.append(str(i-2) + "," + str(j-2) + "," + str(k-2) + "," + str(l-2))
-            elif self.qtc_type is 'bc':
+            elif self.qtc_type == 'bc':
                 for i in range(1, 4):
                     for j in range(1, 4):
                         ret_int.append([i-2, j-2, np.nan, np.nan])

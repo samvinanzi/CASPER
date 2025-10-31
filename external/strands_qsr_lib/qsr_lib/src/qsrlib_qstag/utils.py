@@ -46,7 +46,7 @@ def compute_episodes(world_qsr):
 
 			for qsr_key, qsr_val in qsrs.qsr.items():
 				#print("  ", qsr_key, qsr_val)
-				if qsr_key is "tpcc":
+				if qsr_key == "tpcc":
 					origin,relatum,datum = objs.split(',')
 					new_key=("%s-%s,%s") % (origin,relatum,datum)
 					try:

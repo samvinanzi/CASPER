@@ -93,7 +93,7 @@ def median_filter(data, n=3):
     initial_window = data[0:n]
     counts, value = get_counts_from_window(initial_window)
     #if the max counted relation is unique, fill the window with this.
-    if counts.count(max(counts)) is 1:
+    if counts.count(max(counts)) == 1:
         ret = [value]*n
     #otherwise, just pick one as they have no ordinal information
     else:
@@ -111,7 +111,7 @@ def median_filter(data, n=3):
         counts, value = get_counts_from_window(window)
 
         # If the max counted relation is unique, add it
-        if counts.count(max(counts)) is 1:
+        if counts.count(max(counts)) == 1:
             ret.append(value)
         # If multiple relations have same count, - add the previous relation
         else:

@@ -429,13 +429,13 @@ def get_graph(episodes, object_types={}):
         graph.add_edge(edge_from_object, vertex_count)
         spatial_obj_edges.append((edge_from_object, vertex_count))
 
-        if spatial_edges is 2:
+        if spatial_edges == 2:
             #print("TWO OBJECTS -- ")
             edge_to_object = objects[objs[1]]
             graph.add_edge(vertex_count, edge_to_object)
             spatial_obj_edges.append( (vertex_count, edge_to_object) )
 
-        elif spatial_edges is 3:
+        elif spatial_edges == 3:
             #print("THREE OBJECTS -- ")
             edge_from_object_2 = objects[objs[1]]
             edge_from_object_3  = objects[objs[2]]
