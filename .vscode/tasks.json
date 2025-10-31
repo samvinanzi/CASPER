@@ -1,0 +1,30 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Check container running",
+      "type": "shell",
+      "command": "bash -c '\
+if [ -z \"$(docker ps -q -f name=webots-container)\" ]; then \
+    echo \"ERROR: webots-container is not running. Please start it manually.\"; \
+    exit 1; \
+else \
+    echo \"webots-container is running.\"; \
+fi'"
+    },
+    {
+      "label": "Run HumanAgent inside container",
+      "type": "shell",
+      "dependsOn": "Launch Webots scene in container",
+      "command": "docker exec -it webots-container bash -c 'export __NV_PRIME_RENDER_OFFLOAD=1 && export __GLX_VENDOR_LIBRARY_NAME=nvidia && export __VK_LAYER_NV_optimus=NVIDIA_only && python3 /app/CASPER/webots/controllers/HumanAgent/HumanAgent.py --robot_name HumanAgent'",
+      "problemMatcher": []
+    },
+    {
+      "label": "Run RobotAgent inside container",
+      "type": "shell",
+      "dependsOn": "Launch Webots scene in container",
+      "command": "docker exec -it webots-container bash -c 'export __NV_PRIME_RENDER_OFFLOAD=1 && export __GLX_VENDOR_LIBRARY_NAME=nvidia && export __VK_LAYER_NV_optimus=NVIDIA_only && python3 /app/CASPER/webots/controllers/RobotAgent/RobotAgent.py --robot_name myTiago'",
+      "problemMatcher": []
+    }
+  ]
+}

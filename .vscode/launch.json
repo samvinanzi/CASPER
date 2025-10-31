@@ -1,0 +1,34 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "HumanAgent (GPU in container)",
+      "type": "python",
+      "request": "launch",
+      "program": "/app/CASPER/webots/controllers/HumanAgent/HumanAgent.py",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "preLaunchTask": "Run HumanAgent inside container"
+    },
+    {
+      "name": "RobotAgent (GPU in container)",
+      "type": "python",
+      "request": "launch",
+      "program": "/app/CASPER/webots/controllers/RobotAgent/RobotAgent.py",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "preLaunchTask": "Run RobotAgent inside container"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Run Both Controllers",
+      "configurations": [
+        "HumanAgent (GPU in container)",
+        "RobotAgent (GPU in container)"
+      ],
+      "preLaunchTask": "Check container running",
+      "stopAll": true
+    }
+  ]
+}
