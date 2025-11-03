@@ -16,7 +16,7 @@ fi'"
       "label": "Run HumanAgent inside container",
       "type": "shell",
       "dependsOn": "Launch Webots scene in container",
-      "command": "docker exec -it webots-container bash -c 'export __NV_PRIME_RENDER_OFFLOAD=1 && export __GLX_VENDOR_LIBRARY_NAME=nvidia && export __VK_LAYER_NV_optimus=NVIDIA_only && python3 /app/CASPER/webots/controllers/HumanAgent/HumanAgent.py --robot_name HumanAgent'",
+      "command": "docker exec -it webots-container bash -c 'export __NV_PRIME_RENDER_OFFLOAD=1 && export __GLX_VENDOR_LIBRARY_NAME=nvidia && export __VK_LAYER_NV_optimus=NVIDIA_only && python3 /app/CASPER/webots/controllers/HumanAgent/HumanAgent.py --robot_name human'",
       "problemMatcher": []
     },
     {
