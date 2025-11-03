@@ -7,7 +7,7 @@ from qsrlib_io.world_qsr_trace import *
 
 
 class QSR_Arg_Relations_Distance(QSR_Arg_Relations_Abstractclass):
-    """Argument distance relations.
+    r"""Argument distance relations.
 
     .. note:: The relations are defined on the intervals of distance thresholds [d\ :sub:`k`, d\ :sub:`k+1`).
 

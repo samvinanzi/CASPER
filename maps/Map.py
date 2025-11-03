@@ -13,8 +13,8 @@ from random import uniform
 class Map:
     @abstractmethod
     def __init__(self):
-        if speedups.available:
-            speedups.enable()   # Ensure Shapely speed-ups are enabled, when available
+        #if speedups.available:
+            #speedups.enable()   # Ensure Shapely speed-ups are enabled, when available -- Starting with Shapely 2.0, equivalent speedups are always available
         self.obstacles = None
         self.prepared_obstacles = None  # Prepared items enable fast computations
         self.room = None    # Outer shape of the environment
