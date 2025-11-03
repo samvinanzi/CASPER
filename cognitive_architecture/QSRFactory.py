@@ -66,7 +66,7 @@ class QSRFactory:
                         foo += str(k) + ":" + str(v.qsr) + "; "
                     print(foo)
             qsrlib_request_message = QSRlib_Request_Message(self.which_qsr, self.world_trace, dynamic_args=self.dynamic_args)
-            print(qsrlib_request_message.input_data)
+            #print(qsrlib_request_message.input_data)
             qsrlib_response_message = self.qsrlib.request_qsrs(req_msg=qsrlib_request_message)
             if show:
                 pretty_print_world_qsr_trace(qsrlib_response_message)
