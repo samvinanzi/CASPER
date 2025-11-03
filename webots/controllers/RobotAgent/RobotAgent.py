@@ -74,14 +74,14 @@ class RobotAgent(Agent):
                        }
         self.max_speed = 10.0
         self.inertial = InertialUnit("inertial unit")
-        self.compass = Compass("compax")
+        #self.compass = Compass("compass")
 
         # Enables and disables devices
         self.inertial.enable(self.timestep)
         self.camera.enable(self.timestep)
         self.camera.recognitionEnable(self.timestep)
         self.rangefinder.disable()
-        self.compass.enable(self.timestep)
+        #self.compass.enable(self.timestep)
 
         self.update_world_trace()
         print(str(self.__class__.__name__) + " has activated.")
@@ -361,8 +361,9 @@ class RobotAgent(Agent):
         else:
             print("[ERROR] Invalid motion name: {0}".format(motion_name))
 
-    def get_robot_heading(self):
+    def get_robot_heading_2021aWebots(self):
         """
+        DEPRECATED
         Using the internal compass, calculates the angle between the robot's facing and the world North.
 
         @return: Angle between the robot and the world's north, in degrees.
@@ -372,6 +373,19 @@ class RobotAgent(Agent):
         heading = math.degrees(rad - 1.57)
         if heading < 0.0:
             heading += 360.0
+        return heading
+    
+    def get_robot_heading(self):
+        """
+        Calculates the angle between the robot's facing direction
+        and the world's North, using the InertialUnit (yaw angle).
+        Returns heading in degrees [0, 360).
+        """
+        roll, pitch, yaw = self.inertial.getRollPitchYaw()
+        # Webots yaw is in radians, counterclockwise from world X axis
+        heading = math.degrees(yaw)
+        # Convert to compass convention (0° = North, increasing clockwise)
+        heading = (90 - heading) % 360
         return heading
 
     def motor_reset(self):
