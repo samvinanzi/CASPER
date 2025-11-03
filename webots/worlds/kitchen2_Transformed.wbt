@@ -40,7 +40,7 @@ EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/project
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/apartment_structure/protos/Window.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/kitchen/utensils/protos/WoodenSpoon.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/kitchen/components/protos/Worktop.proto"
-EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/humans/pedestrian/protos/Pedestrian.proto"
+EXTERNPROTO "../protos/Pedestrian.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/pal_robotics/tiagopp/protos/Tiago++.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/apartment_structure/protos/DoorLever.proto"
 
@@ -48,8 +48,8 @@ WorldInfo {
 }
 Viewpoint {
   fieldOfView 1.1
-  orientation -0.0449154838755274 -0.9974480406710754 0.05549779698023946 4.919889232029944
-  position -1.6562443511370715 -0.8871611737704775 8.421993094054875
+  orientation -0.18924862802933173 0.0036347156229406164 0.981922474348844 3.1038794508824057
+  position 8.906802630820438 -0.4938746722281966 6.1540085333336485
   exposure 0.7999999999999999
   followType "None"
 }
@@ -821,14 +821,26 @@ BunchOfSunFlowers {
 }
 Pedestrian {
   translation -1.88154 -1.43692 1.27
-  name "human12"
-  controller "<extern>"
+  name "human"
+  controller "HumanAgent"
+  controllerArgs [
+    "--speed 2"
+  ]
+  trainingTaskLabel "STILL"
+  bodySlot [
+    RangeFinder {
+      translation 0 0 0.4
+    }
+    Camera {
+      translation 0 0 0.39
+    }
+  ]
 }
 Tiago++ {
   translation -0.20523 -3.51365 0.095
   rotation 0 0 1 1.65261
   name "myTiago"
-  controller "RobotAgent"
+  controller "<none>"
   supervisor TRUE
   cameraSlot [
     RangeFinder {
