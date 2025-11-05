@@ -130,12 +130,12 @@ class Agent:
 
     def convert_to_2d_coords(self, world_coordinates):
         """
-        Converts a 3D world coordinate in a 2D coordinate (for i.e. trajectories).
+        Converts a 3D world coordinate in ENU (Webots 2025a) to 2D coordinates (East, North).
 
-        :param world_coordinates: 3d world coordinates (x, y, z)
-        :return: 2d world coordinates (x, z)
+        :param world_coordinates: 3D world coordinates [X=East, Y=North, Z=Up]
+        :return: 2D world coordinates (X=East, Y=North)
         """
-        return (round(world_coordinates[0], 2), round(world_coordinates[2], 2))
+        return (round(world_coordinates[0], 2), round(world_coordinates[1], 2))
 
     def is_bumper_pressed(self):
         """
@@ -185,7 +185,7 @@ class Agent:
                     if isinstance(object, CameraRecognitionObject):
                         coordinates = tuple(object.get_position_on_image())
                         shifted_coordinates = (coordinates[0], coordinates[1] - 10)
-                        model = object.getModel().decode('utf-8')
+                        model = object.getModel()#.decode('utf-8')
                         size = object.get_size_on_image()
                         color = (0, 0, 255)
                         # Draw on the image
@@ -236,9 +236,9 @@ class Agent:
 
     def get_robot_position(self):
         """
-        Using Supervisor functions, obtains the 2D (x,z) position of the robot.
+        Using Supervisor functions, obtains the 2D (x,y) position of the robot.
 
-        :return: (x,z) position of the robot
+        :return: (x,y) position of the robot
         """
         return self.convert_to_2d_coords(self.supervisor.getSelf().getPosition())
 
@@ -267,7 +267,7 @@ class Agent:
         """
         Rotates the robot, in place, towards the target.
 
-        :param target: coordinate in the format (x, z)
+        :param target: coordinate in the format (x, y)
         :return: None
         """
         start = self.get_robot_position()
@@ -279,14 +279,14 @@ class Agent:
         dy = end[1] - start[1]
         angle = math.atan2(dx, dy)
         while self.step():
-            root_rotation_field.setSFRotation([0, 1, 0, angle])
+            root_rotation_field.setSFRotation([0, 0, 1, angle]) # Z axis is up
             break
 
     def path_planning(self, map, goal, show=False):
         """
         Finds a path to reach a goal.
 
-        :param goal: (x,z) coordinates.
+        :param goal: (x,y) coordinates.
         :param show: If True, visualizes the calculated path.
         :return: Path as a list of coordinates, or None if not found.
         """
@@ -304,3 +304,17 @@ class Agent:
                 map.add_point_to_plot(waypoint)
             map.visualize()
         return path
+    
+    def convert_NUE_to_ENU(old_vec):
+        x_old, y_old, z_old = old_vec
+        x_new = z_old      # East
+        y_new = -x_old     # North (rotated 90° CCW)
+        z_new = y_old      # Up
+        return [x_new, y_new, z_new]
+    
+    def convert_RUB_to_FLU(local_vec):
+        x_old, y_old, z_old = local_vec
+        x_new = -z_old   # Forward = -Back
+        y_new = -x_old   # Left = -Right
+        z_new = y_old    # Up = Up
+        return [x_new, y_new, z_new]
