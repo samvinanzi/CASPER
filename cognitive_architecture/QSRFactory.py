@@ -88,7 +88,7 @@ class QSRFactory:
                 trimming_point = int(critical_size / 2)
                 self.world_trace = self.world_trace.get_at_timestamp_range(start=latest_timestamp-trimming_point)
 
-    def __init__(self, qsr_synch, debug=True):
+    def __init__(self, qsr_synch, debug=False):
         self.debug = debug
         self.qsr_parser = self.QSRParser()
         self.observations = []
@@ -138,7 +138,7 @@ class QSRFactory:
                 continue
             else:
                 self.qsr_parser.trim()
-                qsr = self.qsr_parser.compute_qsr(show=True)
+                qsr = self.qsr_parser.compute_qsr(show=False)
                 # Store the QSR library for the consumer
                 if self.debug:
                     print("[OBSLIB] Updating the QSR Library with timestamp {0}.".format(
