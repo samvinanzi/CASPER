@@ -20,12 +20,11 @@ current_map = Kitchen2()
 
 
 class HumanAgent(Agent):
-    def __init__(self, mode="TRAIN", debug=False):
+    def __init__(self, mode="TRAIN", debug=True):
         Agent.__init__(self, debug=debug)
 
         assert mode.upper() == "TRAIN" or mode.upper() == "TEST", "mode must be TEST or TRAIN."
         self.mode = mode
-
         # Enables and disables devices
         self.camera.disable()
         #self.camera.recognitionEnable(self.timestep)
@@ -70,7 +69,7 @@ class HumanAgent(Agent):
             [0.0, 0.0, 0.42, -0.07, 0.07, 0.07, -0.07, -0.36],  # right foot
             [0.18, 0.09, 0.0, 0.09, 0.18, 0.09, 0.0, 0.09]  # head
         ]
-
+        
         # Resets the object held field (doesn't reset automatically between Webots executions)
         object_held_field: Field = self.supervisor.getSelf().getField("heldObjectReference")
         object_held_field.setSFInt32(0)
@@ -104,7 +103,7 @@ class HumanAgent(Agent):
         dy = end[1] - start[1]
         angle = math.atan2(dx, dy)
         while self.step():
-            root_rotation_field.setSFRotation([0, 1, 0, angle])
+            root_rotation_field.setSFRotation([0, 0, 1, angle])
             break
 
     def walk(self, target, speed=None, enable_bumper=False, debug=False):
@@ -136,7 +135,7 @@ class HumanAgent(Agent):
         if debug:
             print("Angle: {0} rad ({1}°)".format(angle, math.degrees(angle)))
             print("Distance: {0}".format(math.dist(start, end)))
-        root_rotation_field.setSFRotation([0, 1, 0, angle])
+        root_rotation_field.setSFRotation([0, 0, 1, angle])
 
         # Move
         s = np.array(start)
@@ -626,6 +625,7 @@ class HumanAgent(Agent):
 # MAIN LOOP
 
 def main():
+    print("Starting HumanAgent controller...")
     human = HumanAgent()
     while human.step():
         human.busy_waiting(1, label="STILL")    # Intro
