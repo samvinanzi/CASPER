@@ -48,8 +48,8 @@ WorldInfo {
 }
 Viewpoint {
   fieldOfView 1.1
-  orientation -0.18924862802933173 0.0036347156229406164 0.981922474348844 3.1038794508824057
-  position 8.906802630820438 -0.4938746722281966 6.1540085333336485
+  orientation 0.5764477650854866 -0.5668355596536329 -0.5885621653148462 4.1908854624666905
+  position -0.3775149257940905 -3.5345402815595515 4.469581338202272
   exposure 0.7999999999999999
   followType "None"
 }
@@ -822,7 +822,7 @@ BunchOfSunFlowers {
 Pedestrian {
   translation -1.88154 -1.43692 1.27
   name "human"
-  controller "HumanAgent"
+  controller "<none>"
   controllerArgs [
     "--speed 2"
   ]
@@ -837,10 +837,10 @@ Pedestrian {
   ]
 }
 Tiago++ {
-  translation -0.20523 -3.51365 0.095
-  rotation 0 0 1 1.65261
+  translation -0.15982 -3.5398 0.095
+  rotation 0 0 1 1.58
   name "myTiago"
-  controller "<none>"
+  controller "RobotAgent"
   supervisor TRUE
   cameraSlot [
     RangeFinder {
