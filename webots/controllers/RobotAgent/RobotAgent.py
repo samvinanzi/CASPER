@@ -29,7 +29,7 @@ from multiprocessing import Event
 from datatypes.Synchronization import QSRSynch, SynchVariable
 from controller import GPS, Compass
 
-agents = ["HumanAgent"]                     # Humans and other robots will initially be unknown
+agents = ["Pedestrian"]   # Humans and other robots will initially be unknown -- 2021a was HumanAgent
 # Some environmental elements and the robot itself are not considered
 included = ["human", "sink", "glass", "hobs", "biscuits", "meal", "plate", "bottle"]
 
@@ -127,7 +127,7 @@ class RobotAgent(Agent):
                         print("Updated the position of {0} to {1}".format(name, current_position))
                 # If the node is the human, check if they are holding items in their hands. If this is the case,
                 # prepare a list of corrections (they must be registered at the same position of the human)
-                if typename == "HumanAgent":
+                if typename == "Pedestrian":# was HumanAgent
                     object_held_field: Field = node.getField("heldObjectReference")
                     object_held_id = object_held_field.getSFInt32()
                     if object_held_id != 0:
@@ -151,7 +151,7 @@ class RobotAgent(Agent):
         if current_timestep > self.last_timestep:
             new_objects = []
             for name, position in self.world_knowledge.items():
-                print(name, position)
+                #print(name, position)
                 if position is not None:
                     # If we are dealing with a human, let's register their specific states
                     if name == "human":
@@ -173,10 +173,10 @@ class RobotAgent(Agent):
                         ov = self.calculate_human_orientation_vector(name, (position[0], position[1]))
                         # ObjectState insertion
                         new_os = Object_State(name=name, timestamp=current_timestep,
-                                              x=position[0], y=position[2], hold=hold, label=training_label,
-                                              target=training_target, ov=ov)# TODO LETI
+                                              x=position[0], y=position[1], hold=hold, label=training_label,
+                                              target=training_target, ov=ov)
                     else:
-                        new_os = Object_State(name=name, timestamp=current_timestep, x=position[0], y=position[2])# TODO LETI
+                        new_os = Object_State(name=name, timestamp=current_timestep, x=position[0], y=position[1])
                     new_objects.append(new_os)
                     if debug:
                         print("Added {0} to world trace in position [{1}, {2}] at timestamp {3}.".format(
@@ -197,14 +197,25 @@ class RobotAgent(Agent):
         human: Node = self.all_nodes.get(human_name)
         if human is None:
             return None
-        R = np.array(human.getOrientation())
-        R = R.reshape(3, 3)
-        T = np.array([human_position[0], 1.27, human_position[1]])
-        p_local = np.array([0, 0, 1], dtype=float)
+   
+        # Rotation matrix (3×3)
+        R = np.array(human.getOrientation()).reshape(3, 3)
+
+        # Translation: Z is now up
+        T = np.array([human_position[0], human_position[1], 1.27])
+
+        # Local forward direction (in the new coordinate system, forward = +Y)
+        p_local = np.array([0, 1, 0], dtype=float)
+
+        # Transform to global coordinates
         p_global = np.dot(R, p_local) + T
-        new_position = [round(p_global[0], 2), round(p_global[2], 2)]
+
+        # Project to ground plane (X–Y)
+        new_position = [round(p_global[0], 2), round(p_global[1], 2)]
+
         dx = human_position[0] - new_position[0]
         dy = human_position[1] - new_position[1]
+
         return np.asarray([dx, dy])
 
     def get_target_coordinates(self, target_name):
@@ -234,7 +245,7 @@ class RobotAgent(Agent):
         direction = direction.upper()
         assert direction == "LEFT" or direction == "RIGHT", "Direction must be 'left' or 'right'."
         assert 0.0 < speed <= 1.0, "Speed must be in (0, 1]."
-        assert 0 < degrees <= 360
+        assert 0 <= degrees <= 360
         max_speed = 10.1523
         # If the angle is too narrow, skip these computations
         if 0 <= degrees <= 2:
@@ -361,17 +372,19 @@ class RobotAgent(Agent):
         else:
             print("[ERROR] Invalid motion name: {0}".format(motion_name))
 
-    def get_robot_heading_2021aWebots(self):
+    def get_robot_heading_Webots2021a(self):
         """
         DEPRECATED
         Using the internal compass, calculates the angle between the robot's facing and the world North.
 
+        compass-style
+
         @return: Angle between the robot and the world's north, in degrees.
         """
-        north = self.compass.getValues()
-        rad = math.atan2(north[0], north[2])
+        north = self.compass.getValues() # [Forward, Left, Up]
+        rad = math.atan2(north[0], north[1])  # swapped order → 0°=North, CW positive
         heading = math.degrees(rad - 1.57)
-        if heading < 0.0:
+        if heading < 0:
             heading += 360.0
         return heading
     
@@ -380,13 +393,24 @@ class RobotAgent(Agent):
         Calculates the angle between the robot's facing direction
         and the world's North, using the InertialUnit (yaw angle).
         Returns heading in degrees [0, 360).
+
+        0° = North, 90° = East, increases clockwise.
+
+        Robot facing	Heading (deg)
+            North (Y+)	    0°
+            East (X+)	    90°
+            South (Y−)	    180°
+            West (X−)	    270°
         """
         roll, pitch, yaw = self.inertial.getRollPitchYaw()
         # Webots yaw is in radians, counterclockwise from world X axis
-        heading = math.degrees(yaw)
-        # Convert to compass convention (0° = North, increasing clockwise)
+        heading = math.floor(math.degrees(yaw))
+
+        # Convert to compass convention (0° = North, increasing clockwise) -- # Adjust: yaw=0 → East, so rotate to make 0 = North
         heading = (90 - heading) % 360
+ 
         return heading
+        
 
     def motor_reset(self):
         """
@@ -405,12 +429,13 @@ class RobotAgent(Agent):
         """
         Walks to a specific coordinate, without any animation.
 
-        :param target: coordinate in the format (x, z)
+        :param target: coordinate in the format (x, y)
         :param speed: walking speed in [m/s]
         :param debug: activate/deactivate debug output
         :return: None
         """
         start_position = self.get_robot_position()
+        print(start_position, target)
         if speed is None:
             speed = self.speed
         end_position = target
@@ -421,13 +446,16 @@ class RobotAgent(Agent):
         # Calculates the angle between the robot's position and the target
         dx = end_position[0] - start_position[0]
         dy = end_position[1] - start_position[1]
-        destination_angle = math.degrees(math.atan2(dy, dx))
+        destination_angle = math.degrees(math.atan2(dx, dy))
         # Calculates the angle between the robot's current heading and the destination
         angle = destination_angle - heading
+        print("Current heading: {0}°. Destination angle: {1}°. Need to rotate {2}°.".format(
+            round(heading, 2), destination_angle, round(angle, 2)))
         if angle > 180.0:
             angle -= 360.0 - angle
         elif angle < -180.0:
             angle = 360.0 + angle
+        print("Normalized rotation angle: {0}°.".format(round(angle, 2)))
         # Performs the rotation
         if angle > 0:
             self.rotate(angle, "RIGHT", speed=0.1)
@@ -439,6 +467,8 @@ class RobotAgent(Agent):
         self.motor_reset()
         current_position = self.get_robot_position()
         total_distance = math.dist(current_position, end_position)
+        print("Walking towards {0} from {1}, total distance {2} m.".format(
+            end_position, current_position, round(total_distance, 2)))
         while self.step():
             remaining_distance = math.dist(self.get_robot_position(), end_position)
             if remaining_distance > 0.5:
@@ -463,14 +493,17 @@ class RobotAgent(Agent):
         if target is not None:
             # If identified, gets its world position
             target_position = self.convert_to_2d_coords(target.getPosition())
+            print("Target {0} found at {1}.".format(target_name, target_position))
             # Trace a path to the destination
             print("Path planning, please wait...")
-            path = self.path_planning(current_map, target_position, show=False)
+            path = self.path_planning(current_map, target_position, show=True)
             print("Path found!")
             if path is not None:
-                print("Walking towards {0}".format(target_name))
+                print(path)
                 for waypoint in path:
                     self.walk(waypoint, speed=speed, debug=False)
+                    print("Reached waypoint {0}.".format(waypoint))
+                    print("-----------------------------------------------------------------------------------------------")
                 self.turn_towards(target_position)
                 return True
             else:
@@ -483,10 +516,10 @@ class RobotAgent(Agent):
         """
         Same as approach_target, but moves to certain coordinates instead of referencing a node in the environment.
 
-        :param coordinates: (X,Z) tuple
+        :param coordinates: (X,Y) tuple
         :return: True if successful, False otherwise
         """
-        assert isinstance(coordinates, tuple), "Must specify a tuple (X,Z) to walk to"
+        assert isinstance(coordinates, tuple), "Must specify a tuple (X,Y) to walk to"
         # Trace a path to the destination
         print("Path planning, please wait...")
         path = self.path_planning(current_map, coordinates, show=False)
@@ -535,7 +568,6 @@ class RobotAgent(Agent):
         """
         orientation = np.array(self.supervisor.getSelf().getOrientation())
         orientation = orientation.reshape(3, 3)
-        orientation[:, [0, 1]] = orientation[:, [1, 0]]
         return orientation
 
 
@@ -544,6 +576,23 @@ class RobotAgent(Agent):
 # MAIN LOOP
 
 def main():
+    #map = Kitchen2()
+    robot = RobotAgent()
+    #robot.initialize()
+    #robot.main()
+    #robot.walk(target=(2.25851, 1.59772), speed=1)
+    robot.motion("neutral")
+    #print("starting first walk")
+    #robot.walk((-1.16398, -1.13518), speed=1, debug=True)
+    #print("finished first walk")
+    #robot.walk_to((3.37, 2.0), speed=1, debug=True)
+    robot.approach_target('plate', debug=True)
+    #robot.rotate(90.0, "RIGHT", speed=1, observe=False)
+    #robot.rotate(90.0, "LEFT", speed=1, observe=False)
+    #robot.rotate(90.0, "RIGHT", speed=1, observe=False)
+    #print("Hello!")
+
+'''def main():
     #map = Kitchen2()
     robot = RobotAgent()
     #robot.initialize()
@@ -556,9 +605,7 @@ def main():
     #robot.rotate(90.0, "RIGHT", speed=1, observe=False)
     #robot.rotate(90.0, "LEFT", speed=1, observe=False)
     #robot.rotate(90.0, "RIGHT", speed=1, observe=False)
-    #print("Hello!")
-
-
+    #print("Hello!")'''
 # Run this code to benchmark execution time
 #cProfile.run('main()', sort='time')
 main()
