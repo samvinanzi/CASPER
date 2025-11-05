@@ -8,6 +8,7 @@ from shapely.geometry import Polygon, Point
 from shapely import speedups
 import matplotlib.pyplot as plt
 from random import uniform
+from datetime import datetime
 
 
 class Map:
@@ -124,8 +125,12 @@ class Map:
         for obstacle in self.obstacles:
             x, y = obstacle.exterior.xy
             plt.fill(y, x)
-        
-        plt.savefig("../../../path_planning/map.png")
+
+        # Generate timestamped filename
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        filename = f"../../..//path_planning/GeneratedPaths/map_{timestamp}.png"
+            
+        plt.savefig(filename)
         #plt.show()
 
     def add_point_to_plot(self, point, style="k.", text=None):
