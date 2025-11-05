@@ -39,44 +39,44 @@ class RoboAStar(AStar):
         assert direction in ["N", "NE", "E", "SE", "S", "SW", "W", "NW"], "Invalid direction"
         delta_diagonal = math.sqrt(2) / 2 * self.delta
         x = 0
-        z = 0
+        y = 0
         if direction == "N":
-            z += self.delta
+            y += self.delta
         elif direction == "E":
             x -= self.delta
         elif direction == "S":
-            z -= self.delta
+            y -= self.delta
         elif direction == "W":
             x += self.delta
         elif direction == "NE":
             x -= delta_diagonal
-            z += delta_diagonal
+            y += delta_diagonal
         elif direction == "SE":
             x -= delta_diagonal
-            z -= delta_diagonal
+            y -= delta_diagonal
         elif direction == "SW":
             x += delta_diagonal
-            z -= delta_diagonal
+            y -= delta_diagonal
         elif direction == "NW":
             x += delta_diagonal
-            z += delta_diagonal
+            y += delta_diagonal
         x = round(x, 2)
-        z = round(z, 2)
-        return np.array([x, 0, z], dtype=float)
+        y = round(y, 2)
+        return np.array([x, y, 0], dtype=float)
 
     def global_from_local(self, current_position, p_local):
         robot = self.robot.getSelf()
         R = np.array(robot.getOrientation())
         R = R.reshape(3, 3)
-        T = np.array([current_position[0], 1.27, current_position[1]])
+        T = np.array([current_position[0], current_position[1], 1.27])
         p_global = np.dot(R, p_local) + T
-        return (round(p_global[0], 2), round(p_global[2], 2))
+        return (round(p_global[0], 2), round(p_global[1], 2))
 
     def global_from_local_fast(self, R, current_position, p_local):
         # Moved the calculation of R outside the function to speed up execution time
-        T = np.array([current_position[0], 1.27, current_position[1]])
+        T = np.array([current_position[0], current_position[1], 1.27])
         p_global = np.dot(R, p_local) + T
-        return (round(p_global[0], 2), round(p_global[2], 2))
+        return (round(p_global[0], 2), round(p_global[1], 2))
 
     def is_valid(self, destination):
         return self.map.in_room(destination)
