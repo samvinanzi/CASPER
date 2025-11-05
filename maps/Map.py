@@ -105,20 +105,28 @@ class Map:
 
         :return: None
         """
-        # Prepares the plot
-        plt.gca().invert_yaxis()
-        plt.xlabel("X")
-        plt.ylabel("Z")
-        # Marks the origin, for reference
-        plt.plot(0, 0, 'rP')
-        # Draws the boundaries of the environment (external walls)
+        # Prepare the plot
+        ax = plt.gca()
+        ax.invert_xaxis()  # ⬅️ invert only the X axis
+        
+        # Webots coordinate system has Y going right and X going up, so we swap them for visualization
+        plt.xlabel("Y")
+        plt.ylabel("X")
+        
+        # Mark the origin for reference
+        #plt.plot(0, 0, 'rP')
+        
+        # Draw environment boundaries (external walls)
         x, y = self.room.exterior.xy
-        plt.plot(x, y, 'k-')
-        # Draws the obstacles and fills them
+        plt.plot(y, x, 'k-')
+        
+        # Draw obstacles and fill them
         for obstacle in self.obstacles:
             x, y = obstacle.exterior.xy
-            plt.fill(x, y)
-        plt.show()
+            plt.fill(y, x)
+        
+        plt.savefig("../../../path_planning/map.png")
+        #plt.show()
 
     def add_point_to_plot(self, point, style="k.", text=None):
         """
@@ -129,9 +137,9 @@ class Map:
         :param text: optional label to add to the plot
         :return: None
         """
-        plt.plot(point[0], point[1], style)
+        plt.plot(point[1], point[0], style)# Webots coordinate system has Y going right and X going up, so we swap them for visualization
         if text:
-            plt.text(point[0], point[1], text)
+            plt.text(point[1], point[0], text)
 
     def bounding_box(self):
         """
