@@ -22,6 +22,8 @@ class Map:
         self.prepared_room = None
         self.free_space = None
         self.prepared_free_space = None
+        self.axesInverted = False
+        self.goalCounter = 0
 
     @staticmethod
     def does_intersect(poly1: Polygon, poly2: Polygon):
@@ -108,7 +110,10 @@ class Map:
         """
         # Prepare the plot
         ax = plt.gca()
-        ax.invert_xaxis()  # ⬅️ invert only the X axis
+
+        if(not self.axesInverted):
+            ax.invert_xaxis()  # invert only the X axis
+            self.axesInverted = True
         
         # Webots coordinate system has Y going right and X going up, so we swap them for visualization
         plt.xlabel("Y")
@@ -121,10 +126,13 @@ class Map:
         x, y = self.room.exterior.xy
         plt.plot(y, x, 'k-')
         
+        obstaclesColor = ['lightgrey', 'darkgrey', 'dimgray', 'grey']
+        i = 0
         # Draw obstacles and fill them
         for obstacle in self.obstacles:
             x, y = obstacle.exterior.xy
-            plt.fill(y, x)
+            plt.fill(y, x, obstaclesColor[i])
+            i += 1
 
         # Generate timestamped filename
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -144,7 +152,11 @@ class Map:
         """
         plt.plot(point[1], point[0], style)# Webots coordinate system has Y going right and X going up, so we swap them for visualization
         if text:
-            plt.text(point[1], point[0], text)
+            if(text == 'GOAL'):
+                self.goalCounter += 1
+                plt.text(point[1], point[0], text + ' ' + str(self.goalCounter))
+            else:
+                plt.text(point[1], point[0], text)
 
     def bounding_box(self):
         """
