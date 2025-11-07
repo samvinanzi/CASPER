@@ -205,7 +205,7 @@ class RobotAgent(Agent):
         T = np.array([human_position[0], human_position[1], 1.27])
 
         # Local forward direction (in the new coordinate system, forward = +Y)
-        p_local = np.array([0, 1, 0], dtype=float)
+        p_local = np.array([1, 0, 0], dtype=float)#[0, 1, 0]
 
         # Transform to global coordinates
         p_global = np.dot(R, p_local) + T
@@ -444,9 +444,9 @@ class RobotAgent(Agent):
         # Calculates the robot's heading
         heading = self.get_robot_heading()
         # Calculates the angle between the robot's position and the target
-        dx = end_position[0] - start_position[0]
-        dy = end_position[1] - start_position[1]
-        destination_angle = math.degrees(math.atan2(dx, dy))
+        dx = end_position[0] - start_position[0] # North component
+        dy = end_position[1] - start_position[1] # East component
+        destination_angle = math.degrees(math.atan2(dx, dy)) # using the robot frame (because how we use heading)
         # Calculates the angle between the robot's current heading and the destination
         angle = destination_angle - heading
         print("Current heading: {0}°. Destination angle: {1}°. Need to rotate {2}°.".format(
@@ -571,27 +571,22 @@ class RobotAgent(Agent):
         return orientation
 
 
-
-
-# MAIN LOOP
-
 def main():
     #map = Kitchen2()
     robot = RobotAgent()
     #robot.initialize()
     #robot.main()
-    #robot.walk(target=(2.25851, 1.59772), speed=1)
+    #robot.walk_to(target=(2.25851, 1.59772), speed=1)
     robot.motion("neutral")
-    #print("starting first walk")
-    #robot.walk((-1.16398, -1.13518), speed=1, debug=True)
-    #print("finished first walk")
+    #robot.walk_to((1.0, 1.0), speed=1, debug=True)
     #robot.walk_to((3.37, 2.0), speed=1, debug=True)
-    robot.approach_target('plate', debug=True)
+    robot.approach_target('plate')
     #robot.rotate(90.0, "RIGHT", speed=1, observe=False)
     #robot.rotate(90.0, "LEFT", speed=1, observe=False)
     #robot.rotate(90.0, "RIGHT", speed=1, observe=False)
     #print("Hello!")
 
+# MAIN LOOP
 '''def main():
     #map = Kitchen2()
     robot = RobotAgent()
@@ -606,6 +601,7 @@ def main():
     #robot.rotate(90.0, "LEFT", speed=1, observe=False)
     #robot.rotate(90.0, "RIGHT", speed=1, observe=False)
     #print("Hello!")'''
+
 # Run this code to benchmark execution time
 #cProfile.run('main()', sort='time')
 main()
