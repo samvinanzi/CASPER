@@ -24,6 +24,7 @@ class Map:
         self.prepared_free_space = None
         self.axesInverted = False
         self.goalCounter = 0
+        self.points = {}
 
     @staticmethod
     def does_intersect(poly1: Polygon, poly2: Polygon):
@@ -102,7 +103,7 @@ class Map:
         distances.append(self.room.exterior.distance(point))
         return round(min(distances), 2)
 
-    def visualize(self):
+    def visualize(self, agentName="Agent"):
         """
         Prints a 2D schematic of the environment.
 
@@ -136,7 +137,8 @@ class Map:
 
         # Generate timestamped filename
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        filename = f"../../..//path_planning/GeneratedPaths/map_{timestamp}.png"
+        #filename = f"../../../path_planning/GeneratedPaths/map_{timestamp}.png"
+        filename = f"../../../path_planning/GeneratedPaths/map_{agentName}.png"
             
         plt.savefig(filename)
         #plt.show()
@@ -154,7 +156,13 @@ class Map:
         if text:
             if(text == 'GOAL'):
                 self.goalCounter += 1
-                plt.text(point[1], point[0], text + ' ' + str(self.goalCounter))
+                goalsSameCoord = self.add_point_goals(point[1], point[0]) 
+                if(goalsSameCoord > 0):
+                    num_spaces = 5 + goalsSameCoord + 2 * (goalsSameCoord - 1)
+                    space_string = "  " * num_spaces
+                    plt.text(point[1], point[0], space_string + ', ' + str(self.goalCounter))
+                else:
+                    plt.text(point[1], point[0], text + ' ' + str(self.goalCounter))
             else:
                 plt.text(point[1], point[0], text)
 
@@ -196,3 +204,11 @@ class Map:
             p = self.sample_point()
             self.add_point_to_plot(p, text=i)
         self.visualize()
+
+    def add_point_goals(self, x, y):
+        coord = (x, y)  # tuples can be dict keys
+        if coord in self.points:
+            self.points[coord] += 1
+        else:
+            self.points[coord] = 1
+        return self.points[coord] - 1 #do not consider the one just added
