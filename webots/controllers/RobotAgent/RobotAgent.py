@@ -571,23 +571,8 @@ class RobotAgent(Agent):
         return orientation
 
 
-def main():
-    #map = Kitchen2()
-    robot = RobotAgent()
-    #robot.initialize()
-    #robot.main()
-    #robot.walk_to(target=(2.25851, 1.59772), speed=1)
-    robot.motion("neutral")
-    #robot.walk_to((1.0, 1.0), speed=1, debug=True)
-    #robot.walk_to((3.37, 2.0), speed=1, debug=True)
-    robot.approach_target('plate')
-    #robot.rotate(90.0, "RIGHT", speed=1, observe=False)
-    #robot.rotate(90.0, "LEFT", speed=1, observe=False)
-    #robot.rotate(90.0, "RIGHT", speed=1, observe=False)
-    #print("Hello!")
-
 # MAIN LOOP
-'''def main():
+def main():
     #map = Kitchen2()
     robot = RobotAgent()
     #robot.initialize()
@@ -600,7 +585,7 @@ def main():
     #robot.rotate(90.0, "RIGHT", speed=1, observe=False)
     #robot.rotate(90.0, "LEFT", speed=1, observe=False)
     #robot.rotate(90.0, "RIGHT", speed=1, observe=False)
-    #print("Hello!")'''
+    #print("Hello!")
 
 # Run this code to benchmark execution time
 #cProfile.run('main()', sort='time')
