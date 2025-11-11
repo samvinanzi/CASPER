@@ -2,6 +2,11 @@
 HumanAgent controller.
 Derives from Agent.
 """
+
+UPPER_ARM_LENGTH = 0.25  # m (estimate)
+LOWER_ARM_LENGTH = 0.23  # m (estimate)
+HAND_LENGTH = 0.10       # m (estimate)
+
 import sys
 import os
 
@@ -9,12 +14,13 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 
 from Agent import Agent
-from controller import Node, Field
+from controller import Node, Field, Proto
 import math
 import numpy as np
 from maps.Kitchen2 import Kitchen2
 from copy import copy
 import cProfile
+from typing import Tuple
 
 current_map = Kitchen2()
 
@@ -74,6 +80,8 @@ class HumanAgent(Agent):
         object_held_field: Field = self.supervisor.getSelf().getField("heldObjectReference")
         object_held_field.setSFInt32(0)
 
+        self.startingPosition = root_node_ref.getField("translation").getSFVec3f()
+
         print(str(self.__class__.__name__) + " has activated.")
 
     def get_in_hand_name(self):
@@ -91,7 +99,7 @@ class HumanAgent(Agent):
         """
         Rotates the robot, in place, towards the target.
 
-        :param target: coordinate in the format (x, z)
+        :param target: coordinate in the format (x, y)
         :return: None
         """
         start = self.get_robot_position()
@@ -110,7 +118,7 @@ class HumanAgent(Agent):
         """
         Walks to a specific coordinate, without any animation.
 
-        :param target: coordinate in the format (x, z)
+        :param target: coordinate in the format (x, y)
         :param speed: walking speed in [m/s]
         :param enable_bumper: Activates or deactivates the bumper collision detection
         :param debug: activate/deactivate debug output
@@ -131,7 +139,7 @@ class HumanAgent(Agent):
         # Rotate
         dx = end[0] - start[0]
         dy = end[1] - start[1]
-        angle = math.atan2(dx, dy)
+        angle = math.atan2(dy, dx) # Using the world frame
         if debug:
             print("Angle: {0} rad ({1}°)".format(angle, math.degrees(angle)))
             print("Distance: {0}".format(math.dist(start, end)))
@@ -157,7 +165,7 @@ class HumanAgent(Agent):
             else:
                 # Step backwards to avoid occupying the intersecting space (which will result in further detections)
                 waypoint = f(i-delta)
-            root_translation_field.setSFVec3f([waypoint[0], self.ROOT_HEIGHT, waypoint[1]])
+            root_translation_field.setSFVec3f([waypoint[0], waypoint[1], self.ROOT_HEIGHT])
             # If an object is held, it has to move together with the agent
             self.move_object_in_hand()
             # Stop if the walk is complete or if an obstacle was hit
@@ -181,7 +189,7 @@ class HumanAgent(Agent):
             target_position = self.convert_to_2d_coords(target.getPosition())
             # Trace a path to the destination
             print("Path planning, please wait...")
-            path = self.path_planning(current_map, target_position, show=False)
+            path = self.path_planning(current_map, target_position, show=True)
             print("Path found!")
             if path is not None:
                 print("Walking towards {0}".format(target_name))
@@ -207,10 +215,10 @@ class HumanAgent(Agent):
         """
         Same as approach_target, but moves to certain coordinates instead of referencing a node in the environment.
 
-        :param coordinates: (X,Z) tuple
+        :param coordinates: (X,Y) tuple
         :return: True if successful, False otherwise
         """
-        assert isinstance(coordinates, tuple), "Must specify a tuple (X,Z) to walk to"
+        assert isinstance(coordinates, tuple), "Must specify a tuple (X,Y) to walk to"
         # Trace a path to the destination
         print("Path planning, please wait...")
         path = self.path_planning(current_map, coordinates, show=False)
@@ -269,8 +277,8 @@ class HumanAgent(Agent):
         lower_angle = lower_start
         while self.step():
             if math.fabs(upper_target - upper_angle) > 0 and math.fabs(lower_target - lower_angle) > 0:
-                self.joints_position_field[upper_arm_index].setSFFloat(upper_angle)
-                self.joints_position_field[lower_arm_index].setSFFloat(lower_angle)
+                self.joints_position_field[upper_arm_index].setSFFloat(float(upper_angle))
+                self.joints_position_field[lower_arm_index].setSFFloat(float(lower_angle))
                 upper_angle += upper_step
                 lower_angle += lower_step
             else:
@@ -295,6 +303,7 @@ class HumanAgent(Agent):
         target: Node = self.all_nodes.get(target_name)
         if target is not None:
             self.object_in_hand = target
+            print("Object {0} grasped.".format(target_name))
             object_held_field: Field = self.supervisor.getSelf().getField("heldObjectReference")
             object_held_field.setSFInt32(target.getId())
             #self.move_object_in_hand()
@@ -304,7 +313,7 @@ class HumanAgent(Agent):
             # Maintain the object's angle
             hand_rotation[-1] = object_rotation[-1]
             if self.is_trainingmode():
-                self.busy_waiting(2, label="PICK", target=target_name)    # wait
+                self.busy_waiting(2, label="PICK", target=target_name)    # wait   
             self.update_training_label("PICK")
             self.update_training_target(target_name)
             while self.step():
@@ -335,13 +344,13 @@ class HumanAgent(Agent):
                     print("Destination must be one of: {0} (selected: {1})".format(accepted_types, destination.getTypeName()))
                 else:
                     """ Old position calculation, based on a tabletop. New one is based on destination object.
-                    # The destination must have X and Z coordinates of the surface, Y equal to the table height
+                    # The destination must have X and Y coordinates of the surface, Z equal to the table height
                     surface_trans = destination.getField("translation").getSFVec3f()
-                    # Get the height of the table (Y)
+                    # Get the height of the table (Z)
                     surface_size = destination.getField("size").getSFVec3f()
-                    surface_height = surface_size[1]
+                    surface_height = surface_size[2]
                     # Calculate the new position and assign it
-                    final_position = [surface_trans[0], surface_height, surface_trans[2]]
+                    final_position = [surface_trans[0], surface_trans[1]], surface_height]
                     """
                     surface_trans = destination.getField("translation").getSFVec3f()
                     final_position = copy(surface_trans)
@@ -378,52 +387,142 @@ class HumanAgent(Agent):
             hand_rotation[-1] = object_rotation[-1]
             self.object_in_hand.getField("translation").setSFVec3f(hand_translation)
             self.object_in_hand.getField("rotation").setSFRotation(hand_rotation)
+  
 
     def get_hand_transform(self):
         """
-        Obtains the translational and rotational vectors for the right hand.
-
-        :return: hand translation, hand rotation wrt the world coordiantes
+        Compute the world position and rotation of the right hand.
         """
-        # Robot
-        robot = self.supervisor.getSelf()
-        robot_trans = robot.getField("translation").getSFVec3f()
-        robot_rot = robot.getField("rotation").getSFRotation()
-        robot_children = robot.getProtoField("children")
-        robot_solid = robot_children.getMFNode(robot_children.getCount() - 1)
-        robot_solid_children = robot_solid.getField("children")
-        # Right upper arm
-        upper_arm = robot_solid_children.getMFNode(3)
-        upper_arm_endpoint = upper_arm.getField("endPoint")
-        upper_arm_endpoint_solid = upper_arm_endpoint.getSFNode()
-        upper_arm_trans = upper_arm_endpoint_solid.getField("translation").getSFVec3f()
-        upper_arm_rot = upper_arm_endpoint_solid.getField("rotation").getSFRotation()
-        upper_arm_children = upper_arm_endpoint_solid.getField("children")
-        # Right lower arm
-        hj = upper_arm_children.getMFNode(upper_arm_children.getCount() - 1)
-        lower_arm_endpoint: Field = hj.getField("endPoint")
-        lower_arm_endpoint_solid = lower_arm_endpoint.getSFNode()
-        lower_arm_trans = lower_arm_endpoint_solid.getField("translation").getSFVec3f()
-        lower_arm_rot = lower_arm_endpoint_solid.getField("rotation").getSFRotation()
-        lower_arm_children = lower_arm_endpoint_solid.getField("children")
-        # Hand
-        hj2 = lower_arm_children.getMFNode(lower_arm_children.getCount() - 1)
-        hand_endpoint: Field = hj2.getField("endPoint")
-        hand_endpoint_solid = hand_endpoint.getSFNode()
-        hand_children = hand_endpoint_solid.getField("children")
-        # Hand_transform
-        transform = hand_children.getMFNode(0)
-        hand_trans = transform.getField("translation").getSFVec3f()
-        hand_rot = transform.getField("rotation").getSFRotation()
 
-        hand_position = transform.getPosition()
-        # Calculates the translation from the hand to the world
-        #translations = [robot_trans, upper_arm_trans, lower_arm_trans, hand_trans]
-        rotations = [robot_rot, upper_arm_rot, lower_arm_rot, hand_rot] # disattivo?
-        #t = [sum(x) for x in zip(*translations)]
-        r = [sum(x) for x in zip(*rotations)]
-        #return t, r
-        return hand_position, r
+        # Get human world pose
+        robot = self.supervisor.getSelf()
+        translation = np.array(robot.getField("translation").getSFVec3f())
+        rotation_field = robot.getField("rotation").getSFRotation()
+
+        # Segment lengths (for 1.82 m person)
+        L1, L2, L3 = 0.35, 0.26, 0.19  # upper arm, lower arm, hand
+
+        # Shoulder offset: from torso center to shoulder (in FLU)
+        shoulder_offset_right = np.array([0.0, -0.20, 0.0])  # 20 cm to the right
+        # (for left arm, use np.array([0.0, +0.20, 0.0]))
+
+        # Angles (Webots fields, in radians)
+        rightArmAngle = robot.getField("rightArmAngle").getSFFloat()
+        rightLowerArmAngle = robot.getField("rightLowerArmAngle").getSFFloat()
+        wrist_angle = robot.getField("rightHandAngle").getSFFloat()
+
+        # Compute hand world pose
+        p_world, R_world_hand = self.compute_hand_pose_world(
+            translation, rotation_field,
+            shoulder_offset_right,
+            L1, L2, L3,
+            rightArmAngle, rightLowerArmAngle, wrist_angle
+        )
+
+        hand_rotation = self.matrix_to_axis_angle(R_world_hand)
+        #print("Hand center (world ENU):", p_world, hand_rotation)
+
+        # Convert everything to standard Python floats and lists
+        p_world_converted = [float(x) for x in p_world]
+        hand_rotation_converted = [float(x) for x in hand_rotation]
+
+        return p_world_converted, hand_rotation_converted
+    
+    def matrix_to_axis_angle(self, R):
+        """
+        Convert a 3×3 rotation matrix to Webots [axis_x, axis_y, axis_z, angle].
+        """
+        angle = math.acos(max(-1.0, min(1.0, (np.trace(R) - 1) / 2.0)))
+        if abs(angle) < 1e-6:
+            # No rotation
+            return [0.0, 1.0, 0.0, 0.0]
+        rx = R[2,1] - R[1,2]
+        ry = R[0,2] - R[2,0]
+        rz = R[1,0] - R[0,1]
+        axis = np.array([rx, ry, rz])
+        axis /= np.linalg.norm(axis)
+        return [axis[0], axis[1], axis[2], angle]
+
+
+    def axis_angle_to_matrix(self, axis, angle):
+        """Convert Webots axis-angle rotation to 3×3 rotation matrix."""
+        axis = np.array(axis, dtype=float)
+        axis /= np.linalg.norm(axis)
+        x, y, z = axis
+        c = math.cos(angle)
+        s = math.sin(angle)
+        C = 1 - c
+        return np.array([
+            [x*x*C + c,   x*y*C - z*s, x*z*C + y*s],
+            [y*x*C + z*s, y*y*C + c,   y*z*C - x*s],
+            [z*x*C - y*s, z*y*C + x*s, z*z*C + c]
+        ])
+
+
+    def rot_y(self, theta):
+        """Rotation matrix around Y axis."""
+        c, s = math.cos(theta), math.sin(theta)
+        return np.array([
+            [ c, 0,  s],
+            [ 0, 1,  0],
+            [-s, 0,  c]
+        ])
+
+
+    def compute_hand_local(self, L1, L2, L3, shoulder_angle, elbow_angle, wrist_angle):
+        """
+        Compute the hand position and rotation in the human local FLU frame.
+
+        Conventions:
+        - 0 = arm straight down (−Z)
+        - Negative angles = arm lifts upward/forward (+X, +Z)
+        - Positive angles = arm lowers backward
+        """
+
+        # Segment direction (downward)
+        dir_segment = np.array([0.0, 0.0, -1.0])
+
+        # Rotations around Y
+        R1 = self.rot_y(shoulder_angle)
+        R2 = self.rot_y(shoulder_angle + elbow_angle)
+        R3 = self.rot_y(shoulder_angle + elbow_angle + wrist_angle)
+
+        # Shoulder position (0.1 m above torso origin)
+        p_shoulder = np.array([0.0, 0.0, 0.3])
+
+        # Forward kinematics
+        p_elbow = p_shoulder + L1 * (R1 @ dir_segment)
+        p_wrist = p_elbow + L2 * (R2 @ dir_segment)
+        p_hand  = p_wrist + 0.5 * L3 * (R3 @ dir_segment)
+
+        p_local = p_hand
+        R_local = R3
+        return p_local, R_local
+
+
+    def compute_hand_pose_world(self,
+        human_translation, human_rotation_field,
+        shoulder_offset_local_flu,
+        L1, L2, L3, shoulder_angle, elbow_angle, wrist_angle
+    ):
+        """Compute the hand center position and rotation in world coordinates."""
+        axis = human_rotation_field[:3]
+        angle = human_rotation_field[3]
+        R_world_human = self.axis_angle_to_matrix(axis, angle)
+
+        # Local hand pose
+        p_hand_local, R_hand_local = self.compute_hand_local(
+            L1, L2, L3, shoulder_angle, elbow_angle, wrist_angle
+        )
+
+        # Add shoulder lateral offset
+        p_total_local = shoulder_offset_local_flu + p_hand_local
+
+        # Transform to world
+        p_world = R_world_human @ p_total_local + np.array(human_translation)
+        R_world_hand = R_world_human @ R_hand_local
+        return p_world, R_world_hand
+    
 
     def busy_waiting(self, duration, label="STILL", target="", debug=False):
         """
@@ -526,7 +625,7 @@ class HumanAgent(Agent):
         """
         Performs the action "Relocate" (Still, Walk, Still)
 
-        :param coordinates: (X, Z) coordinates
+        :param coordinates: (X, Y) coordinates
         :return None
         """
         self.busy_waiting(3, label="STILL")
@@ -548,7 +647,7 @@ class HumanAgent(Agent):
             self.pick_and_place("plate", "sink")
             self.use("plate", "sink")
         else:
-            self.relocate((1.4688, 2.11786))    # Return to the original starting position
+            self.relocate(tuple(self.startingPosition[:2]))    # Return to the original starting position
 
     def lunch(self, with_collab=False):
         """
@@ -565,7 +664,7 @@ class HumanAgent(Agent):
             self.pick_and_place("plate", "sink")
             self.use("plate", "sink")
         else:
-            self.relocate((1.4688, 2.11786))    # Return to the original starting position
+            self.relocate(tuple(self.startingPosition[:2]))    # Return to the original starting position
 
     def drink(self, with_collab=False):
         """
@@ -581,7 +680,7 @@ class HumanAgent(Agent):
             self.pick_and_place("glass", "sink")
             self.use("glass", "sink")
         else:
-            self.relocate((1.4688, 2.11786))    # Return to the original starting position
+            self.relocate(tuple(self.startingPosition[:2]))    # Return to the original starting position
 
     def calculate_orientation_vector(self):
         """
@@ -589,10 +688,10 @@ class HumanAgent(Agent):
         """
         human_position = self.get_robot_position()
         R = self.get_robot_orientation()
-        T = np.array([human_position[0], 1.27, human_position[1]])
-        p_local = np.array([0, 0, 1], dtype=float)
+        T = np.array([human_position[0], human_position[1], 1.27])
+        p_local = np.array([1, 0, 0], dtype=float)#[0, 1, 0]
         p_global = np.dot(R, p_local) + T
-        new_position = [round(p_global[0], 2), round(p_global[2], 2)]
+        new_position = [round(p_global[0], 2), round(p_global[1], 2)]
         dx = human_position[0] - new_position[0]
         dy = human_position[1] - new_position[1]
         return np.asarray([dx, dy]), human_position
@@ -610,7 +709,7 @@ class HumanAgent(Agent):
         if target is not None:
             # Calculate the human-to-object vector
             target_trans = target.getPosition()
-            object_position = np.asarray([target_trans[0], target_trans[2]])
+            object_position = np.asarray([target_trans[0], target_trans[1]])
             dx = human_position[0] - object_position[0]
             dy = human_position[1] - object_position[1]
             object_vector = np.asarray([dx, dy])
@@ -625,7 +724,6 @@ class HumanAgent(Agent):
 # MAIN LOOP
 
 def main():
-    print("Starting HumanAgent controller...")
     human = HumanAgent()
     while human.step():
         human.busy_waiting(1, label="STILL")    # Intro
