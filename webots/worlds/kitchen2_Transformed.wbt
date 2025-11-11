@@ -40,16 +40,16 @@ EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/project
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/apartment_structure/protos/Window.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/kitchen/utensils/protos/WoodenSpoon.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/kitchen/components/protos/Worktop.proto"
-EXTERNPROTO "../protos/Pedestrian.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/pal_robotics/tiagopp/protos/Tiago++.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/apartment_structure/protos/DoorLever.proto"
+EXTERNPROTO "../protos/Pedestrian.proto"
 
 WorldInfo {
 }
 Viewpoint {
   fieldOfView 1.1
-  orientation 0.5764477650854866 -0.5668355596536329 -0.5885621653148462 4.1908854624666905
-  position -0.3775149257940905 -3.5345402815595515 4.469581338202272
+  orientation 0.3356361602426948 -0.3721870754319018 -0.865346837296461 4.671144696278053
+  position -1.6780342469583718 -4.555281919360093 3.3760309763785172
   exposure 0.7999999999999999
   followType "None"
 }
@@ -819,28 +819,11 @@ DEF GameMaster Robot {
 BunchOfSunFlowers {
   translation 0.124192 1.53672 0.89
 }
-Pedestrian {
-  translation -1.88154 -1.43692 1.27
-  name "human"
-  controller "<none>"
-  controllerArgs [
-    "--speed 2"
-  ]
-  trainingTaskLabel "STILL"
-  bodySlot [
-    RangeFinder {
-      translation 0 0 0.4
-    }
-    Camera {
-      translation 0 0 0.39
-    }
-  ]
-}
 Tiago++ {
   translation -0.15982 -3.5398 0.095
   rotation 0 0 1 1.58
   name "myTiago"
-  controller "RobotAgent"
+  controller "<none>"
   supervisor TRUE
   cameraSlot [
     RangeFinder {
@@ -849,6 +832,31 @@ Tiago++ {
       rotation -1 0 0 1.5708
       recognition Recognition {
       }
+    }
+  ]
+}
+Pedestrian {
+  translation -1.92 -1.44 1.27
+  name "human"
+  controllerArgs [
+    "NonRigid"
+  ]
+  trainingTaskLabel "STILL"
+  bodySlot [
+    RangeFinder {
+    }
+    Camera {
+      translation 0.14 0 0.46
+      recognition Recognition {
+      }
+    }
+  ]
+  leftHandSlot [
+    TouchSensor {
+    }
+  ]
+  rightHandSlot [
+    TouchSensor {
     }
   ]
 }
