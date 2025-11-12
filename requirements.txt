@@ -10,4 +10,5 @@ pyyaml
 python-docx
 shapely
 owlready2
+filelock
 anytree
