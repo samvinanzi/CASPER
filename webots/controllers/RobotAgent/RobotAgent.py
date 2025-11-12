@@ -38,7 +38,7 @@ current_map = Kitchen2()
 
 class RobotAgent(Agent):
     def __init__(self):
-        Agent.__init__(self)
+        Agent.__init__(self, agentName = "Tiago++")
         # World knowledge
         self.last_timestep = -1             # Last discrete timestep in which activity was recorded
         self.world_knowledge = {}           # Coordinates of all the entities in the world at present

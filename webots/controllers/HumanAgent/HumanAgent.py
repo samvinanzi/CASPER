@@ -27,7 +27,7 @@ current_map = Kitchen2()
 
 class HumanAgent(Agent):
     def __init__(self, mode="TRAIN", debug=True):
-        Agent.__init__(self, debug=debug)
+        Agent.__init__(self, agentName = "Human", debug=debug)
 
         assert mode.upper() == "TRAIN" or mode.upper() == "TEST", "mode must be TEST or TRAIN."
         self.mode = mode
@@ -732,6 +732,7 @@ def main():
         #human.drink(with_collab=True)
         human.busy_waiting(-1, label="STILL")   # Outro
         break
+    print("HumanAgent: Simulation ended.")
 
 
 # Run this code to benchmark execution time

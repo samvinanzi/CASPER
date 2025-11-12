@@ -11,7 +11,7 @@ from path_planning.robot_astar import RoboAStar
 
 
 class Agent:
-    def __init__(self, debug=False):
+    def __init__(self, agentName, debug=False):
         self.supervisor = Supervisor()                              # All agents have access to Supervisor functions
         self.timestep = int(self.supervisor.getBasicTimeStep())     # Get the time step of the current world
         self.currentlyPlaying = None                                # Currently playing motion
@@ -19,6 +19,7 @@ class Agent:
         self.debug = debug
         self.object_in_hand: Node = None
         self.speed = .5
+        self.agentName = agentName
 
         # Initialize common devices
         self.camera = Camera("camera")
@@ -302,19 +303,5 @@ class Agent:
         elif show:
             for waypoint in path:
                 map.add_point_to_plot(waypoint)
-            map.visualize()
+            map.visualize(self.agentName)
         return path
-    
-    def convert_NUE_to_ENU(old_vec):
-        x_old, y_old, z_old = old_vec
-        x_new = z_old      # East
-        y_new = -x_old     # North (rotated 90° CCW)
-        z_new = y_old      # Up
-        return [x_new, y_new, z_new]
-    
-    def convert_RUB_to_FLU(local_vec):
-        x_old, y_old, z_old = local_vec
-        x_new = -z_old   # Forward = -Back
-        y_new = -x_old   # Left = -Right
-        z_new = y_old    # Up = Up
-        return [x_new, y_new, z_new]
