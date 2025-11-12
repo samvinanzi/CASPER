@@ -7,6 +7,9 @@ This class uses an ontology to verify the correctness of the low-level predictio
 from owlready2 import *
 from util.PathProvider import path_provider
 import multiprocessing
+from filelock import FileLock
+import sqlite3
+import os
 
 
 class ObservationStatement:
@@ -53,7 +56,21 @@ class GoalStatement:
 class KnowledgeBase:
     # Saves the world in an SQLite3 file on disk instead of keeping it in memory
     #print(path_provider.get_SQLite3())
-    default_world.set_backend(filename=path_provider.get_SQLite3(), exclusive=False)
+    
+    # --- Shared config for all agents ---
+    DB_PATH = path_provider.get_SQLite3()
+    LOCK_PATH = DB_PATH.with_suffix(DB_PATH.suffix + ".lock")
+    LOCK = FileLock(str(LOCK_PATH))
+    
+    #Safely initialize Owlready2 backend in a multi-process environment.
+    default_world.set_backend(filename=DB_PATH, exclusive=False)
+    
+    # --- Ensure WAL mode + safe writes ---
+    if DB_PATH.exists():
+        with sqlite3.connect(DB_PATH) as conn:
+            conn.execute("PRAGMA journal_mode=WAL;") # “Set the rules for the game before anyone starts playing.”
+            conn.execute("PRAGMA synchronous=NORMAL;")  # Optional: faster, still safe
+            conn.commit()
 
     def __init__(self, ontology_name):
         ontofile = path_provider.get_ontology(ontology_name)
@@ -62,6 +79,15 @@ class KnowledgeBase:
         self.op = [property.name for property in self.onto.object_properties()]     # All the object properties names
         self.individuals = [individual for individual in self.onto.individuals()]   # All the individuals
         self.history = {'valid': [], 'invalid': []}
+
+        # Queues for reasoning communication
+        self._task_queue = multiprocessing.Queue()
+        self._result_queue = multiprocessing.Queue()
+
+        # Start the reasoning worker
+        self._worker = multiprocessing.Process(target=self._reasoner_worker)
+        self._worker.daemon = True
+        self._worker.start()
 
     def find_individual(self, name):
         """
@@ -88,6 +114,8 @@ class KnowledgeBase:
         """
         assert engine in ["pellet", "hermit"], "Engine can be either 'hermit' or 'pellet'."
         return_value = queue.get()
+        
+        # Now run reasoning safely
         with self.onto:
             try:
                 if engine == "hermit":
@@ -135,7 +163,7 @@ class KnowledgeBase:
         else:
             return None
 
-    def verify_observation(self, observation_statement, infer=False, debug=False):
+    def verify_observation_old(self, observation_statement, infer=False, debug=False):
         """
         Verify if an observation statement is consistent with the ontology.
 
@@ -191,9 +219,11 @@ class KnowledgeBase:
             print("Is the action consistent in the ontology? {0}".format(observation_statement.valid))
         return observation_statement.valid
 
-    def verify_goal(self, goal_statement, debug=False):
+    def verify_goal_old(self, goal_statement, debug=False):
         """
         Verify if a goal statement is consistent with the ontology.
+
+         # --- Verify a goal safely (assigning object properties + reasoning) ---
 
         @param goal_statement: A GoalStatement object representing the goal of an actor in the world.
         @param debug: Verbose output
@@ -207,22 +237,31 @@ class KnowledgeBase:
         elif goal_statement in self.history['invalid']:
             goal_statement.valid = False
             return False
+        
         # Finds the individuals referred by the statement
         actor = self.find_individual(goal_statement.actor)
         goal = self.find_individual(goal_statement.goal.lower())
         target = self.find_individual(goal_statement.target)
+
         if debug:
             print("{0} {1} {2}".format(actor, goal, target))
-        # Set the attributes
-        setattr(actor, "has_goal", goal)
-        setattr(goal, "involves_object", target)
-        # Verification
-        goal_statement.valid = self.verify_multiprocessing()
-        # Resets the individuals for the next tests
-        setattr(actor, "has_goal", None)
-        setattr(goal, "involves_object", None)
+
+        # Wrap all ontology writes + reasoning under FileLock
+        with KnowledgeBase.LOCK:
+            # Set the attributes
+            setattr(actor, "has_goal", goal)
+            setattr(goal, "involves_object", target)
+
+            # Verification
+            goal_statement.valid = self.verify_multiprocessing()
+
+            # Resets the individuals for the next tests
+            setattr(actor, "has_goal", None)
+            setattr(goal, "involves_object", None)
+
         if debug:
             print("Is the goal consistent in the ontology? {0}".format(goal_statement.valid))
+
         return goal_statement.valid
 
     def infer_frontier(self, goal):
@@ -236,5 +275,179 @@ class KnowledgeBase:
         for f in goal.frontier:
             self.verify_observation(f, infer=True)
 
+
+   # --- Worker process ---
+    def _reasoner_worker(self):
+        while True:
+            task = self._task_queue.get()
+            if task is None:
+                break  # Stop signal
+
+            engine = task.get('engine', 'pellet')
+            infer = task.get('infer', False)
+            individual_assignments = task.get('assignments', [])
+            statement = task.get('statement', None)  # GoalStatement or ObservationStatement
+
+            assert engine in ["pellet", "hermit"], "Engine can be either 'hermit' or 'pellet'."
+
+            valid = True  # default
+
+            resolved_assignments = []
+
+            with KnowledgeBase.LOCK:
+                # Apply assignments
+                for actor_name, prop, value_name in individual_assignments:
+                    # Finds the individuals referred by the statement
+                    actor = self.find_individual(actor_name)
+                    value = self.find_individual(value_name)
+                    #actor = self.onto[actor_name]  # find individual
+                    #value = self.onto[value_name] if value_name else None
+                    setattr(actor, prop, value)
+                    resolved_assignments.append((actor, prop))
+                # Run reasoning
+                try:
+                    if engine == 'hermit':
+                        sync_reasoner_hermit(self.onto, infer_property_values=infer, debug=0)
+                    else:
+                        sync_reasoner_pellet(self.onto, infer_property_values=infer, debug=0)
+                    valid = True
+                except OwlReadyInconsistentOntologyError:
+                    valid = False
+
+                # Reset assignments
+                for actor, prop in resolved_assignments:
+                    setattr(actor, prop, None)
+
+            # Send result back
+            self._result_queue.put({'statement': statement, 'valid': valid})
+
+    
+    def verify_goal(self, goal_statement, engine="pellet", infer=False, debug=True):
+        """
+        Verify if a goal statement is consistent with the ontology.
+
+         # --- Verify a goal safely (assigning object properties + reasoning) ---
+
+        @param goal_statement: A GoalStatement object representing the goal of an actor in the world.
+        @param debug: Verbose output
+        @return: True or False
+        """
+        assert isinstance(goal_statement, GoalStatement), "Input must be a GoalStatement."
+
+        # Check if the goal was already
+        if goal_statement in self.history['valid']:
+            goal_statement.valid = True
+            return True
+        elif goal_statement in self.history['invalid']:
+            goal_statement.valid = False
+            return False
+    
+        # Finds the individuals referred by the statement
+        actor = self.find_individual(goal_statement.actor)
+        goal = self.find_individual(goal_statement.goal.lower())
+        target = self.find_individual(goal_statement.target)
+
+        if debug:
+            print(f"Goal verification: {actor}, {goal}, {target}")
+
+        assignments = [
+            (goal_statement.actor, "has_goal", goal_statement.goal.lower()),
+            (goal_statement.goal.lower(), "involves_object", goal_statement.target)
+        ]
+
+        self._task_queue.put({
+            'engine': engine,
+            'infer': infer,
+            'assignments': assignments,
+            'statement': goal_statement
+        })
+
+        result = self._result_queue.get()
+        goal_statement.valid = result['valid']
+
+        if debug:
+            print("Is the goal consistent in the ontology? {0}".format(goal_statement.valid))
+
+        return goal_statement.valid
+
+    
+    def verify_observation(self, observation_statement, engine='pellet', infer=False, debug=False):
+        """
+        Verify if an observation statement is consistent with the ontology.
+
+        @param observation_statement: An ObservationStatement object representing the action of an actor in the world.
+        @param infer: if True, enables inference on data properties.
+        @param debug: Verbose output
+        @return: True or False
+        """
+        if not infer:
+            observation_statement.valid = self.check_history(observation_statement)
+            if observation_statement.valid is not None:
+                return observation_statement.valid
+        
+        # Finds the individuals referred by the statement
+        actor = self.find_individual(observation_statement.actor)
+        action = observation_statement.action.lower()
+        target = self.find_individual(observation_statement.target)
+        destination = self.find_individual(observation_statement.destination)
+
+        # Analyse the action
+        pt = action + "_target" # The name of the action is the name of the object property, es: cook_target
+        pd = action + "_destination"
+
+        if not hasattr(actor, pt) or not hasattr(actor, pd):
+            if debug:
+                print("Action not recognized in ontology")
+            observation_statement.valid = False  # The action was not recognized
+            return False
+
+        assignments = [(observation_statement.actor, pt, observation_statement.target)]
+        if destination is not None: # Destination might be none if the observation comes from the frontier
+            assignments.append((observation_statement.actor, pd, observation_statement.destination))
+
+        if debug:
+            print(f"Observation verification: {actor}, {action}, {target}, {destination}")
+
+        self._task_queue.put({
+            'engine': engine,
+            'infer': infer,
+            'assignments': assignments,
+            'statement': observation_statement
+        })
+
+        result = self._result_queue.get()
+        observation_statement.valid = result['valid']
+
+        # If we are inferring properties, these have to be saved in the original statement
+        if infer:
+            observation_statement.target = getattr(actor, pt).name if getattr(actor, pt) else None
+            observation_statement.destination = getattr(actor, pd).name if getattr(actor, pd) else None
+
+        # Add it to the list of statements already processed
+        if observation_statement.valid:
+            self.history['valid'].append(observation_statement)
+        else:
+            self.history['invalid'].append(observation_statement)
+
+        if debug:
+            print("Is the action consistent in the ontology? {0}".format(observation_statement.valid))
+
+        return observation_statement.valid
+
+    # --- Optional: reasoning without assignments ---
+    def verify_multiprocessing(self, engine='pellet', infer=False):
+        self._task_queue.put({
+            'engine': engine,
+            'infer': infer,
+            'assignments': [],
+            'statement': None
+        })
+        result = self._result_queue.get()
+        return result['valid']
+
+    # --- Shutdown the worker ---
+    def shutdown(self):
+        self._task_queue.put(None)
+        self._worker.join()
 
 kb = KnowledgeBase('kitchen_onto')

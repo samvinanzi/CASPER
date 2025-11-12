@@ -65,6 +65,7 @@ class HighLevel(Process):
                         self.history['valid'].append(gs)
                     else:
                         self.history['invalid'].append(gs)
+                    kb.shutdown()
         return valid_explanations
 
     @staticmethod
@@ -105,6 +106,7 @@ class HighLevel(Process):
         for i, action in enumerate(new_frontier):
             obs = action.to_observation_statement("tiago")  # todo multiple robots
             valid = kb.verify_observation(obs)
+            kb.shutdown()
             performable[i] = valid
         # Finds the longest subsequence
         start = 0
