@@ -48,8 +48,8 @@ WorldInfo {
 }
 Viewpoint {
   fieldOfView 1.1
-  orientation 0.3356361602426948 -0.3721870754319018 -0.865346837296461 4.671144696278053
-  position -1.6780342469583718 -4.555281919360093 3.3760309763785172
+  orientation 0.3862720959688432 -0.37605075694388806 -0.8422468142283269 4.51517975823747
+  position -0.5918216514480865 -5.539349649188056 5.633370181762266
   exposure 0.7999999999999999
   followType "None"
 }
@@ -822,8 +822,8 @@ BunchOfSunFlowers {
 Tiago++ {
   translation -0.15982 -3.5398 0.095
   rotation 0 0 1 1.58
-  name "myTiago"
-  controller "<none>"
+  name "Tiago"
+  controller "RobotAgent"
   supervisor TRUE
   cameraSlot [
     RangeFinder {
