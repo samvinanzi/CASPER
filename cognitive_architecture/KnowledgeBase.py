@@ -163,106 +163,6 @@ class KnowledgeBase:
         else:
             return None
 
-    def verify_observation_old(self, observation_statement, infer=False, debug=False):
-        """
-        Verify if an observation statement is consistent with the ontology.
-
-        @param observation_statement: An ObservationStatement object representing the action of an actor in the world.
-        @param infer: if True, enables inference on data properties.
-        @param debug: Verbose output
-        @return: True or False
-        """
-        assert isinstance(observation_statement, ObservationStatement), "Input must be an ObservationStatement."
-        if not infer:
-            observation_statement.valid = self.check_history(observation_statement)
-            if observation_statement.valid is not None:
-                return observation_statement.valid
-        # Finds the individuals referred by the statement
-        actor = self.find_individual(observation_statement.actor)
-        action = observation_statement.action
-        target = self.find_individual(observation_statement.target)
-        destination = self.find_individual(observation_statement.destination)
-        if debug:
-            print("{0} {1} {2} {3}".format(actor, action, target, destination))
-        # Analyse the action
-        p = action.lower()  # The name of the action is the name of the object property, es: cook_target
-        pt = p + '_target'
-        pd = p + '_destination'
-        # Verify the existence of the properties for that action
-        if pt in self.op and pd in self.op:
-            # Set the attributes
-            setattr(actor, pt, target)
-            if destination is not None:
-                # Destination might be none if the observation comes from the frontier
-                setattr(actor, pd, destination)
-            # Verification
-            observation_statement.valid = self.verify_multiprocessing(engine="pellet", infer=infer)
-            # Add it to the list of statements already processed
-            if observation_statement.valid:
-                self.history['valid'].append(observation_statement)
-            else:
-                self.history['invalid'].append(observation_statement)
-            # If we are inferring properties, these have to be saved in the original statement
-            if infer:
-                target_individual = getattr(actor, pt)
-                observation_statement.target = target_individual.name if target_individual is not None else None
-                dest_individual = getattr(actor, pd)
-                observation_statement.destination = dest_individual.name if dest_individual is not None else None
-            # Resets the individuals for the next tests
-            setattr(actor, pt, None)
-            setattr(actor, pd, None)
-        else:
-            if debug:
-                print("Action not found")
-            observation_statement.valid = False    # The action was not recognized
-        if debug:
-            print("Is the action consistent in the ontology? {0}".format(observation_statement.valid))
-        return observation_statement.valid
-
-    def verify_goal_old(self, goal_statement, debug=False):
-        """
-        Verify if a goal statement is consistent with the ontology.
-
-         # --- Verify a goal safely (assigning object properties + reasoning) ---
-
-        @param goal_statement: A GoalStatement object representing the goal of an actor in the world.
-        @param debug: Verbose output
-        @return: True or False
-        """
-        assert isinstance(goal_statement, GoalStatement), "Input must be a GoalStatement."
-        # Check if the goal was already
-        if goal_statement in self.history['valid']:
-            goal_statement.valid = True
-            return True
-        elif goal_statement in self.history['invalid']:
-            goal_statement.valid = False
-            return False
-        
-        # Finds the individuals referred by the statement
-        actor = self.find_individual(goal_statement.actor)
-        goal = self.find_individual(goal_statement.goal.lower())
-        target = self.find_individual(goal_statement.target)
-
-        if debug:
-            print("{0} {1} {2}".format(actor, goal, target))
-
-        # Wrap all ontology writes + reasoning under FileLock
-        with KnowledgeBase.LOCK:
-            # Set the attributes
-            setattr(actor, "has_goal", goal)
-            setattr(goal, "involves_object", target)
-
-            # Verification
-            goal_statement.valid = self.verify_multiprocessing()
-
-            # Resets the individuals for the next tests
-            setattr(actor, "has_goal", None)
-            setattr(goal, "involves_object", None)
-
-        if debug:
-            print("Is the goal consistent in the ontology? {0}".format(goal_statement.valid))
-
-        return goal_statement.valid
 
     def infer_frontier(self, goal):
         """
@@ -435,7 +335,7 @@ class KnowledgeBase:
         return observation_statement.valid
 
     # --- Optional: reasoning without assignments ---
-    def verify_multiprocessing(self, engine='pellet', infer=False):
+    def verify_multiprocessing_new(self, engine='pellet', infer=False):
         self._task_queue.put({
             'engine': engine,
             'infer': infer,
