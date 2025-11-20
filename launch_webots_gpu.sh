@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # ===========================
-# Launch Webots (or container) with NVIDIA GPU Offload
+# Launch CASPER (or container) with NVIDIA GPU Offload
 # ===========================
 
-IMAGE_NAME="webots-gui"
-CONTAINER_NAME="webots-container"
+IMAGE_NAME="casper-webots"
+CONTAINER_NAME="casper-container"
 SCENE_PATH="/app/CASPER/webots/worlds/kitchen2_Transformed.wbt"
 
 DOCKERFILE_PATH="Dockerfile"
@@ -35,7 +35,7 @@ else
 fi
 
 # ---------------------------
-# Stop and remove any existing Webots container (if still running)
+# Stop and remove any existing CASPER container (if still running)
 # ---------------------------
 if [ "$(docker ps -aq -f name=$CONTAINER_NAME)" ]; then
   echo "🛑 Stopping existing $CONTAINER_NAME..."
@@ -60,9 +60,9 @@ export LIBGL_ALWAYS_INDIRECT=0
 # webots
 
 # ---------------------------
-# Launch Webots container (auto-deletes on exit):
+# Launch CASPER container (add --rm to auto-deletes on exit):
 # ---------------------------
-docker run -it --rm \
+docker run -it \
   --gpus all \
   --env DISPLAY=$DISPLAY \
   --env XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR \
@@ -71,12 +71,16 @@ docker run -it --rm \
   --env __VK_LAYER_NV_optimus=NVIDIA_only \
   --volume /tmp/.X11-unix:/tmp/.X11-unix \
   --env QT_X11_NO_MITSHM=1 \
-  --mount type=bind,source=/home/e10738lb/Development/CASPER/,target=/app/CASPER \
+  --mount type=bind,source=/home/e10738lb/Development/CASPER,target=/app/CASPER,readonly=false,bind-propagation=rslave \
+  --mount type=volume,source=casper_sqlite,target=/app/CASPER/data/sqlite3 \
   -w /app/CASPER \
   --name $CONTAINER_NAME \
-  $IMAGE_NAME webots "$SCENE_PATH"
+  $IMAGE_NAME webots $SCENE_PATH
 
 # Revoke X access for security after exit
 xhost -local:root
 
- # chmod +x launch_webots_gpu.sh 
+# ---------------------------
+# Copy Data from Docker volume to Host:
+# docker cp casper-container:app/CASPER/data/sqlite3/kitchen.sqlite3 ./data/sqlite3
+# ---------------------------
