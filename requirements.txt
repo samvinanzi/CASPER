@@ -10,5 +10,5 @@ pyyaml
 python-docx
 shapely
 owlready2
-filelock
+fasteners
 anytree
