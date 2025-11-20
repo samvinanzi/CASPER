@@ -2,6 +2,7 @@
 FROM nvidia/cuda:13.0.1-cudnn-devel-ubuntu24.04 AS downloader
 
 ARG WEBOTS_VERSION=R2025a
+#ARG WEBOTS_VERSION=R2021a
 ARG WEBOTS_PACKAGE_PREFIX=
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -22,6 +23,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Install minimal system dependencies for Webots and Python
 RUN apt-get update && apt upgrade -y && \
     apt-get install -y --no-install-recommends \
+    openjdk-17-jre \
     python3 \
     python3-venv \
     python3-pip \
@@ -48,6 +50,9 @@ RUN apt-get update && apt upgrade -y && \
     libgtk-3-0 \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+ENV PATH="$JAVA_HOME/bin:$PATH"
 
 # Set locales
 RUN locale-gen en_US.UTF-8
