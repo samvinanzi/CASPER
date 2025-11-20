@@ -37,7 +37,7 @@ class HighLevel(Process):
         assert isinstance(parameters, dict), "Parameters must be a dictionary of parameters."
         self.pl.add_observation(observation, parameters, ignore)
 
-    def verify_explanations(self):
+    def verify_explanations(self, debug=False):
         """
         Verifies the explanation's validity using the knowledge base
 
@@ -47,6 +47,10 @@ class HighLevel(Process):
         # Here we record goals which we have proven to be false, e.g. any variation of Breakfast with target = 'meal'
         # We do this to minimize the number of verifications that we perform, since they are resource-demanding
         exps = self.pl.get_explanations()
+        if debug:
+            print("[DEBUG] Number of explanations to verify: {0}".format(len(exps)))
+            for exp in exps:
+                print("[DEBUG] Explanation: {0} with score {1}".format(exp, exp.score))
         for exp in exps:
             # Goals with a None main parameter are skipped
             if not exp.is_parametrized():
@@ -60,12 +64,11 @@ class HighLevel(Process):
                 elif gs in self.history['invalid']:       # The goals was already disapproved
                     continue
                 else:
-                    if kb.verify_goal(gs):  # New goal, test it out. Note: this is a resource-heavy operation!
+                    if kb.verify_goal(gs, debug=debug):  # New goal, test it out. Note: this is a resource-heavy operation!
                         valid_explanations.append(exp)
                         self.history['valid'].append(gs)
                     else:
                         self.history['invalid'].append(gs)
-                    kb.shutdown()
         return valid_explanations
 
     @staticmethod
@@ -106,7 +109,6 @@ class HighLevel(Process):
         for i, action in enumerate(new_frontier):
             obs = action.to_observation_statement("tiago")  # todo multiple robots
             valid = kb.verify_observation(obs)
-            kb.shutdown()
             performable[i] = valid
         # Finds the longest subsequence
         start = 0
@@ -140,48 +142,55 @@ class HighLevel(Process):
         human_plan = None
         robot_plan = None
         t = time.time()
-        while True:
-            # Are we in phase 2 (plan filling)?
-            phase1 = True if human_plan is None and robot_plan is None else False
-            # If the human plan is empty, the robot should not wait to act
-            if phase1 or len(human_plan) > 0:
-                # Waits for an observation to be available
-                obs: Prediction = self.input_conn.get()
-                # Adds it to the plan library
-                self.add_observation(obs.name, obs.param, ignore=not phase1)
-            if phase1:
-                # PHASE 1: if HL is still searching for a goal, produce explanations
-                try:
-                    explanations = self.verify_explanations() if self.verification else self.pl.get_explanations()
-                    goal = self.get_winner(explanations)
-                    if goal:
-                        t = time.time() - t
-                        print("TIME: {0}".format(t))
-                        print("- - - - < GOAL: {0} > - - - -".format(goal))
-                        # Cancel every other explanation
-                        self.pl.explanations = [goal]
-                        # Decide on a collaboration plan
-                        human_plan, robot_plan = self.make_plan(goal)
-                        print("Waiting for the human to accomplish the following:")
-                        for action in human_plan:
-                            print("\t{0}{1}".format(action.name, action.parameters))
-                except GoalNotRecognizedException:
-                    print("This robot has failed in recognizing the goal :(")
-                    break
-            else:
-                # PHASE 2: HL has already predicted a goal and is now waiting for the right time to act
-                # Log the data
-                log_data = {
-                    'observed': self.pl.explanations[0].get_number_observed(),
-                    'missed': self.pl.explanations[0].get_number_missed(),
-                    'waiting': len(human_plan),
-                    'planned': len(robot_plan),
-                    'goal': goal,
-                    'time': round(t, 2)
-                }
-                self.logger.log(log_data)
-                #return # todo enable or multiple entries will be recorded
-                if self.has_human_completed(human_plan):
-                    # The human has completed their part of the plan. Signal the CA.
-                    self.output_conn.set(robot_plan)
-                    break
+
+        try:
+            while True:
+                # Are we in phase 2 (plan filling)?
+                phase1 = True if human_plan is None and robot_plan is None else False
+                # If the human plan is empty, the robot should not wait to act
+                print("Phase 1: {0}, Human plan length: {1}".format(phase1, len(human_plan) if human_plan else 0))
+                if phase1 or len(human_plan) > 0:
+                    # Waits for an observation to be available
+                    print("Waiting for observation...")
+                    obs: Prediction = self.input_conn.get()
+                    # Adds it to the plan library
+                    self.add_observation(obs.name, obs.param, ignore=not phase1)
+                if phase1:
+                    # PHASE 1: if HL is still searching for a goal, produce explanations
+                    try:
+                        print("Producing explanations...")
+                        explanations = self.verify_explanations() if self.verification else self.pl.get_explanations()
+                        goal = self.get_winner(explanations)
+                        if goal:
+                            t = time.time() - t
+                            print("TIME: {0}".format(t))
+                            print("- - - - < GOAL: {0} > - - - -".format(goal))
+                            # Cancel every other explanation
+                            self.pl.explanations = [goal]
+                            # Decide on a collaboration plan
+                            human_plan, robot_plan = self.make_plan(goal)
+                            print("Waiting for the human to accomplish the following:")
+                            for action in human_plan:
+                                print("\t{0}{1}".format(action.name, action.parameters))
+                    except GoalNotRecognizedException:
+                        print("This robot has failed in recognizing the goal :(")
+                        break
+                else:
+                    # PHASE 2: HL has already predicted a goal and is now waiting for the right time to act
+                    # Log the data
+                    log_data = {
+                        'observed': self.pl.explanations[0].get_number_observed(),
+                        'missed': self.pl.explanations[0].get_number_missed(),
+                        'waiting': len(human_plan),
+                        'planned': len(robot_plan),
+                        'goal': goal,
+                        'time': round(t, 2)
+                    }
+                    self.logger.log(log_data)
+                    #return # todo enable or multiple entries will be recorded
+                    if self.has_human_completed(human_plan):
+                        # The human has completed their part of the plan. Signal the CA.
+                        self.output_conn.set(robot_plan)
+                        break
+        finally:
+            kb.cleanup_ontology()
