@@ -199,86 +199,90 @@ class LowLevel(Process):
 
     def test(self, debug=True, save_focus=False):
         latest_prediction_time = None
-        while True:
-            # Collect the latest QSRs calculated from the observation of the environment
-            qsr_response, self.world_trace = self.qsr_synch.get()
-            if qsr_response is None:
-                time.sleep(1)
-                continue
-            last_state = qsr_response.qsrs.get_last_state()
-            latest_timestamp = int(last_state.timestamp)
-            if debug:
-                print("#----------- TIME {0} -----------#".format(latest_timestamp))
-            # QSRs can be computed only if there are at least 2 timestamps in the world trace
-            if not len(self.world_trace.get_sorted_timestamps()) >= 2:      # We work with T-1 (see below)
+
+        try:
+            while True:
+                # Collect the latest QSRs calculated from the observation of the environment
+                qsr_response, self.world_trace = self.qsr_synch.get()
+                if qsr_response is None:
+                    time.sleep(1)
+                    continue
+                last_state = qsr_response.qsrs.get_last_state()
+                latest_timestamp = int(last_state.timestamp)
                 if debug:
-                    print("Not enough data, continuing to observe...")
-                continue
-            else:
-                # Build the current episode
-                factory = EpisodeFactory(self.world_trace, qsr_response)
-                # QTC is only calculated at step T-1, so we work with that one
-                episode = factory.build_episode(latest_timestamp-1)
-                if episode is None:
+                    print("#----------- TIME {0} -----------#".format(latest_timestamp))
+                # QSRs can be computed only if there are at least 2 timestamps in the world trace
+                if not len(self.world_trace.get_sorted_timestamps()) >= 2:      # We work with T-1 (see below)
                     if debug:
-                        print("No human found in this frame. Continuing to observe...")
+                        print("Not enough data, continuing to observe...")
                     continue
                 else:
-                    # Assess the focus of the human to identify the object of interest
-                    objects_in_timestep = episode.get_objects_for("human")  # todo multiple humans
-                    for object in objects_in_timestep:
-                        self.focus.add(object)
-                    if save_focus:
-                        print("Saving focus logs for timestamp {0}".format(latest_timestamp))
-                        self.focus.save_probabilities(latest_timestamp)
-                    self.focus.process_iteration()
-                    target, destination = self.focus.get_winners_if_exist()
-                    if not target:
+                    # Build the current episode
+                    factory = EpisodeFactory(self.world_trace, qsr_response)
+                    # QTC is only calculated at step T-1, so we work with that one
+                    episode = factory.build_episode(latest_timestamp-1)
+                    if episode is None:
                         if debug:
-                            print("No clear focus yet, observing...")
-                        continue    # If no confident focus predictions were made, we need to observe more
+                            print("No human found in this frame. Continuing to observe...")
+                        continue
                     else:
-                        if debug:
-                            print("FOCUS: target: {0}, destination: {1}".format(target, destination))
-                        # We have a target: add it to the episode and generate a feature
-                        episode.humans["human"].target = target
-                        feature = episode.to_feature(human="human", train=False)
-                        # Classify the target's set of QSRs into a Movement
-                        movement = self.tree.predict(feature)[0]
-                        if debug:
-                            print("MOVEMENT: {0}".format(movement))
-                        # Add the Movement to the Markovian finite-state machine to predict a temporal Action
-                        if not latest_prediction_time or latest_timestamp - latest_prediction_time > 2: # testing this
-                            # todo testing, remove when not needed
-                            #self.save_log_data(path_provider.get_csv('pnp0.csv'), movement)
-                            ensemble.add_observation(movement)
-                        action, score, winner = ensemble.best_model()   # Try to predict an Action
-                        if not winner:
+                        # Assess the focus of the human to identify the object of interest
+                        objects_in_timestep = episode.get_objects_for("human")  # todo multiple humans
+                        for object in objects_in_timestep:
+                            self.focus.add(object)
+                        if save_focus:
+                            print("Saving focus logs for timestamp {0}".format(latest_timestamp))
+                            self.focus.save_probabilities(latest_timestamp)
+                        self.focus.process_iteration()
+                        target, destination = self.focus.get_winners_if_exist()
+                        if not target:
                             if debug:
-                                print("No action prediction. Candidates: {0} with scores: {1}".format(action, score))
-                            continue    # More data is needed
+                                print("No clear focus yet, observing...")
+                            continue    # If no confident focus predictions were made, we need to observe more
                         else:
-                            # Contextualize the Action
-                            ctx = Contextualizer()
-                            # The second item of the focus is the destination
-                            ca = ctx.give_context(action, destination)
-                            # VERIFICATION
-                            statement = ObservationStatement("human", ca, target, destination)  # todo multiple humans
                             if debug:
-                                print("ACTION: {0} {1} {2}".format(ca, target, destination), end=" ")
-                            if self.verification and not kb.verify_observation(statement):
+                                print("FOCUS: target: {0}, destination: {1}".format(target, destination))
+                            # We have a target: add it to the episode and generate a feature
+                            episode.humans["human"].target = target
+                            feature = episode.to_feature(human="human", train=False)
+                            # Classify the target's set of QSRs into a Movement
+                            movement = self.tree.predict(feature)[0]
+                            if debug:
+                                print("MOVEMENT: {0}".format(movement))
+                            # Add the Movement to the Markovian finite-state machine to predict a temporal Action
+                            if not latest_prediction_time or latest_timestamp - latest_prediction_time > 2: # testing this
+                                # todo testing, remove when not needed
+                                #self.save_log_data(path_provider.get_csv('pnp0.csv'), movement)
+                                ensemble.add_observation(movement)
+                            action, score, winner = ensemble.best_model()   # Try to predict an Action
+                            if not winner:
                                 if debug:
-                                    print("(ignoring)")
-                                continue    # If the observation is invalid, it is discarded
-                            if not debug:
-                                print("Time {0}\nACTION: {1} {2} {3}".format(latest_timestamp, ca, target, destination))
-                            # Observations are only reset here because the predicted action might be inconsistent
-                            latest_prediction_time = latest_timestamp
-                            ensemble.empty_observations()
-                            # Send the observation to CognitiveArchitecture
-                            observation = Prediction(ca, {'target': target, 'destination': destination})
-                            self.ca_conn.set(observation)
-                            # Goes back to observing...
+                                    print("No action prediction. Candidates: {0} with scores: {1}".format(action, score))
+                                continue    # More data is needed
+                            else:
+                                # Contextualize the Action
+                                ctx = Contextualizer()
+                                # The second item of the focus is the destination
+                                ca = ctx.give_context(action, destination)
+                                # VERIFICATION
+                                statement = ObservationStatement("human", ca, target, destination)  # todo multiple humans
+                                if debug:
+                                    print("ACTION: {0} {1} {2}".format(ca, target, destination), end=" ")
+                                if self.verification and not kb.verify_observation(statement, debug=True):
+                                    if debug:
+                                        print("(ignoring)")
+                                    continue    # If the observation is invalid, it is discarded
+                                if not debug:
+                                    print("Time {0}\nACTION: {1} {2} {3}".format(latest_timestamp, ca, target, destination))
+                                # Observations are only reset here because the predicted action might be inconsistent
+                                latest_prediction_time = latest_timestamp
+                                ensemble.empty_observations()
+                                # Send the observation to CognitiveArchitecture
+                                observation = Prediction(ca, {'target': target, 'destination': destination})
+                                self.ca_conn.set(observation)
+                                # Goes back to observing...
+        finally:
+            kb.cleanup_ontology()
 
     def save_log_data(self, file, data):
         """
