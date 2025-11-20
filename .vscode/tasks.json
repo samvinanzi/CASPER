@@ -4,27 +4,32 @@
     {
       "label": "Check container running",
       "type": "shell",
-      "command": "bash -c '\
-if [ -z \"$(docker ps -q -f name=webots-container)\" ]; then \
-    echo \"ERROR: webots-container is not running. Please start it manually.\"; \
-    exit 1; \
-else \
-    echo \"webots-container is running.\"; \
-fi'"
-    },
-    {
-      "label": "Run HumanAgent inside container",
-      "type": "shell",
-      "dependsOn": "Launch Webots scene in container",
-      "command": "docker exec -it webots-container bash -c 'export __NV_PRIME_RENDER_OFFLOAD=1 && export __GLX_VENDOR_LIBRARY_NAME=nvidia && export __VK_LAYER_NV_optimus=NVIDIA_only && python3 /app/CASPER/webots/controllers/HumanAgent/HumanAgent.py --robot_name=human'",
-      "problemMatcher": []
+        "command": "bash -c \"if [ -z \\\"$(docker ps -q -f name=casper-container)\\\" ]; then echo 'ERROR: casper-container is not running. Please start it manually.'; exit 1; else echo 'casper-container is running.'; fi\"",
+        "presentation": {
+        "reveal": "silent",
+        "panel": "new"
+      }
     },
     {
       "label": "Run RobotAgent inside container",
       "type": "shell",
-      "dependsOn": "Launch Webots scene in container",
-      "command": "docker exec -it webots-container bash -c 'export __NV_PRIME_RENDER_OFFLOAD=1 && export __GLX_VENDOR_LIBRARY_NAME=nvidia && export __VK_LAYER_NV_optimus=NVIDIA_only && python3 /app/CASPER/webots/controllers/RobotAgent/RobotAgent.py --robot_name=tiago'",
-      "problemMatcher": []
+      "command": "docker exec -it casper-container bash -c '$WEBOTS_HOME/webots-controller --robot-name=Tiago /app/CASPER/webots/controllers/RobotAgent/RobotAgent.py'",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Run HumanAgent inside container",
+      "type": "shell",
+      "command": "docker exec -it casper-container bash -c '$WEBOTS_HOME/webots-controller --robot-name=human /app/CASPER/webots/controllers/HumanAgent/HumanAgent.py'",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
     }
   ]
 }
+

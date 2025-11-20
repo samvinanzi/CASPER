@@ -3,19 +3,23 @@
   "configurations": [
     {
       "name": "HumanAgent (GPU in container)",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "program": "/app/CASPER/webots/controllers/HumanAgent/HumanAgent.py",
       "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "useSeparateTerminal": true,
       "justMyCode": false,
       "preLaunchTask": "Run HumanAgent inside container"
     },
     {
       "name": "RobotAgent (GPU in container)",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "program": "/app/CASPER/webots/controllers/RobotAgent/RobotAgent.py",
       "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "useSeparateTerminal": true,
       "justMyCode": false,
       "preLaunchTask": "Run RobotAgent inside container"
     }
