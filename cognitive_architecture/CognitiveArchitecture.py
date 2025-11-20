@@ -8,15 +8,16 @@ from multiprocessing import Process
 from datatypes.Synchronization import SynchVariable
 import os
 from util.PathProvider import path_provider
+
 def clear_sqlite_locks(db_path):
     for suffix in ["-shm", "-wal", "-journal"]:
         f = str(db_path) + suffix
         if os.path.exists(f):
             print(f"[CLEANUP] Removing stale lock file: {f}")
             os.remove(f)
+
 db = path_provider.get_SQLite3()
 clear_sqlite_locks(db)
-
 
 class CognitiveArchitecture(Process):
     def __init__(self, robot_conn, qsr_synch, start_event, mode, verification=True):
