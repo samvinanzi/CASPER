@@ -26,7 +26,7 @@ current_map = Kitchen2()
 
 
 class HumanAgent(Agent):
-    def __init__(self, mode="TRAIN", debug=True):
+    def __init__(self, mode="TRAIN", debug=False):
         Agent.__init__(self, agentName = "Human", debug=debug)
 
         assert mode.upper() == "TRAIN" or mode.upper() == "TEST", "mode must be TEST or TRAIN."
