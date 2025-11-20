@@ -138,7 +138,7 @@ class Map:
         # Generate timestamped filename
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         #filename = f"../../../path_planning/GeneratedPaths/map_{timestamp}.png"
-        filename = f"../../../path_planning/GeneratedPaths/map_{agentName}.png"
+        filename = f"../../../data/GeneratedPaths/map_{agentName}.png"
             
         plt.savefig(filename)
         #plt.show()
