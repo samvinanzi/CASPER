@@ -1,38 +1,85 @@
 {
   "version": "0.2.0",
   "configurations": [
+    //
+    // ───── DOCKER DEBUG CONFIGS ────────────────────────────────────
+    //
     {
-      "name": "HumanAgent (GPU in container)",
+      "name": "HumanAgent (in container)",
       "type": "debugpy",
       "request": "launch",
       "program": "/app/CASPER/webots/controllers/HumanAgent/HumanAgent.py",
       "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
       "useSeparateTerminal": true,
       "justMyCode": false,
       "preLaunchTask": "Run HumanAgent inside container"
     },
     {
-      "name": "RobotAgent (GPU in container)",
+      "name": "RobotAgent (in container)",
       "type": "debugpy",
       "request": "launch",
       "program": "/app/CASPER/webots/controllers/RobotAgent/RobotAgent.py",
       "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
       "useSeparateTerminal": true,
       "justMyCode": false,
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/venv/lib/python3.10/site-packages"
+      },
       "preLaunchTask": "Run RobotAgent inside container"
+    },
+
+    //
+    // ───── HOST DEBUG CONFIGS ──────────────────────────────────────
+    //
+    {
+      "name": "HumanAgent (host)",
+      "type": "debugpy",
+      "request": "launch",
+      "python": "${workspaceFolder}/venv/bin/python",
+      "program": "${workspaceFolder}/webots/controllers/HumanAgent/HumanAgent.py",
+      "console": "integratedTerminal",
+      "useSeparateTerminal": true,
+      "justMyCode": false,
+      "preLaunchTask": "Run HumanAgent on host"
+    },
+    {
+      "name": "RobotAgent (host)",
+      "type": "debugpy",
+      "request": "launch",
+      "python": "${workspaceFolder}/venv/bin/python",
+      "program": "${workspaceFolder}/webots/controllers/RobotAgent/RobotAgent.py",
+      "console": "integratedTerminal",
+      "useSeparateTerminal": true,
+      "justMyCode": false,
+      "preLaunchTask": "Run RobotAgent on host"
     }
   ],
+
   "compounds": [
+    //
+    // ───── COMPOUND: RUN BOTH IN CONTAINER ─────────────────────────
+    //
     {
-      "name": "Run Both Controllers",
+      "name": "Run Both Controllers (in container)",
       "configurations": [
-        "HumanAgent (GPU in container)",
-        "RobotAgent (GPU in container)"
+        "HumanAgent (in container)",
+        "RobotAgent (in container)"
       ],
       "preLaunchTask": "Check container running",
+      "stopAll": true
+    },
+
+    //
+    // ───── COMPOUND: RUN BOTH ON HOST ──────────────────────────────
+    //
+    {
+      "name": "Run Both Controllers (host)",
+      "configurations": [
+        "HumanAgent (host)",
+        "RobotAgent (host)"
+      ],
       "stopAll": true
     }
   ]
 }
+

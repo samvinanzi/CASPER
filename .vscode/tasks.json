@@ -1,11 +1,14 @@
 {
   "version": "2.0.0",
   "tasks": [
+    //
+    // ───── DOCKER TASKS ────────────────────────────────────────────
+    //
     {
       "label": "Check container running",
       "type": "shell",
-        "command": "bash -c \"if [ -z \\\"$(docker ps -q -f name=casper-container)\\\" ]; then echo 'ERROR: casper-container is not running. Please start it manually.'; exit 1; else echo 'casper-container is running.'; fi\"",
-        "presentation": {
+      "command": "bash -c \"if [ -z \\\"$(docker ps -q -f name=casper-container)\\\" ]; then echo 'ERROR: casper-container is not running. Please start it manually.'; exit 1; else echo 'casper-container is running.'; fi\"",
+      "presentation": {
         "reveal": "silent",
         "panel": "new"
       }
@@ -14,7 +17,6 @@
       "label": "Run RobotAgent inside container",
       "type": "shell",
       "command": "docker exec -it casper-container bash -c '$WEBOTS_HOME/webots-controller --robot-name=Tiago /app/CASPER/webots/controllers/RobotAgent/RobotAgent.py'",
-      "problemMatcher": [],
       "presentation": {
         "reveal": "always",
         "panel": "new"
@@ -24,7 +26,28 @@
       "label": "Run HumanAgent inside container",
       "type": "shell",
       "command": "docker exec -it casper-container bash -c '$WEBOTS_HOME/webots-controller --robot-name=human /app/CASPER/webots/controllers/HumanAgent/HumanAgent.py'",
-      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+
+    //
+    // ───── HOST TASKS ──────────────────────────────────────────────
+    //
+    {
+      "label": "Run RobotAgent on host",
+      "type": "shell",
+      "command": "bash -c \"source ${workspaceFolder}/venv/bin/activate && $WEBOTS_HOME/webots-controller --robot-name=Tiago ${workspaceFolder}/webots/controllers/RobotAgent/RobotAgent.py\"",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Run HumanAgent on host",
+      "type": "shell",
+      "command": "bash -c \"source ${workspaceFolder}/venv/bin/activate && $WEBOTS_HOME/webots-controller --robot-name=human ${workspaceFolder}/webots/controllers/HumanAgent/HumanAgent.py\"",
       "presentation": {
         "reveal": "always",
         "panel": "new"
@@ -32,4 +55,5 @@
     }
   ]
 }
+
 
