@@ -730,7 +730,7 @@ def main():
         #human.breakfast(with_collab=True)
         human.lunch(with_collab=True)
         #human.drink(with_collab=True)
-        human.busy_waiting(-1, label="STILL")   # Outro
+        human.busy_waiting(1, label="STILL")   # Outro #Originally was -1
         break
     print("HumanAgent: Simulation ended.")
 
