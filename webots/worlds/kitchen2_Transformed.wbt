@@ -823,7 +823,7 @@ Tiago++ {
   translation -0.15982 -3.5398 0.095
   rotation 0 0 1 1.58
   name "Tiago"
-  controller "RobotAgent"
+  controller "<extern>"
   supervisor TRUE
   cameraSlot [
     RangeFinder {
@@ -838,10 +838,12 @@ Tiago++ {
 Pedestrian {
   translation -1.92 -1.44 1.27
   name "human"
+  controller "<extern>"
   controllerArgs [
     "NonRigid"
   ]
-  trainingTaskLabel "STILL"
+  trainingTaskLabel "WALK"
+  trainingTaskTarget "meal"
   bodySlot [
     RangeFinder {
     }
